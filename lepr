@@ -13,22 +13,19 @@ sub tokenize {
   my $chars = shift;
   $chars =~ s{\(}{( }g;
   $chars =~ s{\)}{ )}g;
-  return [ split /\s+/, $chars ];
-}
+  [ split /\s+/, $chars ]}
 
 sub parse {
-  my $tokens = shift;
-  my $t = shift @$tokens;
+  my $t = shift @{$_[0]};
   if    (!defined $t || $t eq ')') { () }
-  elsif ($t eq '(')                { [ parse($tokens) ], parse($tokens) }
-  else                             { $t, parse($tokens) }
-}
+  elsif ($t eq '(')                { [ parse(@_) ], parse(@_) }
+  else                             { $t, parse(@_) }}
 
 sub evaluate {
   my ($expr, $env) = @_;
   my $op = shift @$expr;
   if (!defined $op) {
-    ()
+    ();
   } elsif (ref $op eq 'ARRAY') {
     evaluate($op, $env), evaluate($expr, $env);
   } elsif ($op eq 'macro') {
@@ -42,7 +39,7 @@ sub evaluate {
     $cond = evaluate($cond, $env) if ref $cond;
     if ($cond) { evaluate($then, $env) }
     elsif (my $else = shift @$expr) { evaluate($else, $env) }
-    ();
+    ()
   } elsif ($op eq 'call') {
     my ($fun, @args) = evaluate($expr, $env);
     $fun->(@args);
@@ -50,9 +47,9 @@ sub evaluate {
     my $name = shift @$expr;
     $env->{$name} = $expr;
     ();
-  } elsif (my $macro = find($env, "macro $op")) {
+  } elsif (my $macro = find("macro $op", $env)) {
     $macro->(@$expr);
-  } elsif (my $symbol = find($env, $op)) {
+  } elsif (my $symbol = find($op, $env)) {
     if (ref $symbol eq 'CODE') {
       $symbol->(evaluate($expr, $env));
     } elsif (ref $symbol eq 'ARRAY') {
@@ -62,29 +59,24 @@ sub evaluate {
     }
   } else {
     $op, evaluate($expr, $env);
-  }
-}
+  }}
 
 sub fun {
   my ($expr, $env) = @_;
   my ($params, $body) = splice @$expr, 0;
   sub {
-    my @args = @_;
-    my %scope = map { $params->[$_] => $args[$_] } 0 .. $#$params;
+    my %scope = map { $params->[$_] => $_[$_] } 0 .. $#$params;
     $scope{OUTER} = $env;
     evaluate([@$body], \%scope);
-  };
-}
+  }}
 
 sub find {
-  my ($env, $k) = @_;
+  my ($k, $env) = @_;
   if    (my $v = $env->{$k})        { $v }
-  elsif (my $outer = $env->{OUTER}) { find($outer, $k) }
-}
+  elsif (my $outer = $env->{OUTER}) { find($k, $outer) }}
 
 sub run {
   my ($code) = @_;
   my $tokens = tokenize($code);
   my @ast = parse([@$tokens]);
-  evaluate(\@ast, $ENV);
-}
+  evaluate(\@ast, $ENV)}
