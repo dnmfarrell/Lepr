@@ -43,16 +43,14 @@ sub evaluate {
     };
     ();
   } elsif ($op eq 'fun') {
-    my $name = shift @$expr unless ref $expr->[0]; # might be lambda
     my $params = shift @$expr;
     my $body = shift @$expr;
-    my $fun = sub {
+    sub {
       my @args = @_;
       my %scope = map { $params->[$_] => $args[$_] } 0 .. $#$params;
       $scope{OUTER} = $env;
       evaluate([@$body], \%scope);
     };
-    $name ? $env->{$name} = $fun && () : $fun; # return () when declaring
   } elsif ($op eq 'if') {
     my $cond = shift @$expr;
     my $then = shift @$expr;
@@ -61,8 +59,12 @@ sub evaluate {
     elsif (my $else = shift @$expr) { evaluate($else, $env) }
     ();
   } elsif ($op eq 'call') {
-    my $fun = evaluate(shift(@$expr), $env);
-    $fun->((evaluate($expr, $env)));
+    my ($fun, @args) = evaluate($expr, $env);
+    $fun->(@args);
+  } elsif ($op eq 'set') {
+    my $name = shift @$expr;
+    $env->{$name} = $expr;
+    ();
   } elsif (my $macro = find($env, "macro $op")) {
     $macro->(@$expr);
   } elsif (my $symbol = find($env, $op)) {
