@@ -5,6 +5,7 @@ use warnings;
 our $ENV = {
   print => sub { say @_ },
   head  => sub { shift @_ },
+  join  => sub { my $str = shift; join $str, @_ },
   tail  => sub { shift @_; @_ },
   map   => sub { my $fun = shift; map { $fun->($_) } @_ },
   '+'   => sub { my $n = shift; $n += $_ for @_; $n },
