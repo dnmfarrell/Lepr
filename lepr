@@ -38,8 +38,7 @@ sub evaluate {
   } elsif ($op eq 'fun') {
     fun($expr, $env);
   } elsif ($op eq 'if') {
-    my $cond = shift @$expr;
-    my $then = shift @$expr;
+    my ($cond, $then) = splice @$expr, 0, 2;
     $cond = evaluate($cond, $env) if ref $cond;
     if ($cond) { evaluate($then, $env) }
     elsif (my $else = shift @$expr) { evaluate($else, $env) }
