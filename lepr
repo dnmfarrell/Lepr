@@ -18,7 +18,7 @@ sub tokenize {
 
 sub parse {
   my $tokens = shift;
-  my $t      = shift @$tokens;
+  my $t = shift @$tokens;
   if    (!defined $t || $t eq ')') { () }
   elsif ($t eq '(')                { [ parse($tokens) ], parse($tokens) }
   else                             { $t, parse($tokens) }
