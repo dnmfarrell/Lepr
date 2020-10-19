@@ -2,6 +2,21 @@ Lepr
 ====
 "Leper" is a tiny Lisp-like (< 100 LOC) written in Perl. It supports lambdas, macros, conditional execution and more features are on the way.
 
+Keywords
+--------
+* call
+* fun
+* if
+* macro
+* set
+
+Functions
+---------
+* head
+* map
+* print
+* tail
+
 Copyright 2020 David Farrell
 
 Permission is hereby granted, free of charge, to any person obtaining a copy of this software and associated documentation files (the "Software"), to deal in the Software without restriction, including without limitation the rights to use, copy, modify, merge, publish, distribute, sublicense, and/or sell copies of the Software, and to permit persons to whom the Software is furnished to do so, subject to the following conditions:
