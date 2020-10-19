@@ -1,0 +1,85 @@
+#!/usr/bin/perl
+use v5.16;
+use warnings;
+our $ENV = {
+  print => sub { say @_ },
+  head  => sub { shift @_ },
+  tail  => sub { shift @_; @_ },
+  map   => sub { my $fun = shift; map { $fun->($_) } @_ },
+};
+run(@ARGV);
+
+sub tokenize {
+  my $chars = shift;
+  $chars =~ s{\(}{( }g;
+  $chars =~ s{\)}{ )}g;
+  return [ split /\s+/, $chars ];
+}
+
+sub parse {
+  my $tokens = shift;
+  my $t      = shift @$tokens;
+  if    (!$t || $t eq ')') { () }
+  elsif ($t eq '(')        { [ parse($tokens) ], parse($tokens) }
+  else                     { $t, parse($tokens) }
+}
+
+sub evaluate {
+  my ($expr, $env) = @_;
+  my $op = shift @$expr;
+  if (!defined $op) {
+    ()
+  } elsif (ref $op eq 'ARRAY') {
+    evaluate($op, $env), evaluate($expr, $env);
+  } elsif ($op eq 'macro') {
+    my $name = shift @$expr;
+    my $params = shift @$expr;
+    my $body = shift @$expr;
+    $env->{"macro $name"} = sub {
+      my @args = @_;
+      my %scope = map { $params->[$_] => $args[$_] } 0 .. $#$params;
+      $scope{OUTER} = $env;
+      evaluate([@$body], \%scope); # eval a copy so we retain the original
+    };
+    ();
+  } elsif ($op eq 'fun') {
+    my $name = shift @$expr unless ref $expr->[0]; # might be lambda
+    my $params = shift @$expr;
+    my $body = shift @$expr;
+    my $fun = sub {
+      my @args = @_;
+      my %scope = map { $params->[$_] => $args[$_] } 0 .. $#$params;
+      $scope{OUTER} = $env;
+      evaluate([@$body], \%scope);
+    };
+    $name ? $env->{$name} = $fun && () : $fun; # return () when declaring
+  } elsif ($op eq 'call') {
+    my $fun = evaluate(shift(@$expr), $env);
+    $fun->((evaluate($expr, $env)));
+  } elsif (my $macro = find($env, "macro $op")) {
+    $macro->(@$expr);
+  } elsif (my $symbol = find($env, $op)) {
+    if (ref $symbol eq 'CODE') {
+      $symbol->(evaluate($expr, $env));
+    } elsif (ref $symbol eq 'ARRAY') {
+      evaluate($symbol, $env), evaluate($expr, $env);
+    } else {
+      $symbol, evaluate($expr, $env);
+    }
+  } else {
+    $op, evaluate($expr, $env);
+  }
+}
+
+sub find {
+  my ($env, $k) = @_;
+  if    (my $v = $env->{$k})        { $v }
+  elsif (my $outer = $env->{OUTER}) { find($outer, $k) }
+}
+
+sub run {
+  my ($code) = @_;
+  my $tokens = tokenize($code);
+  my @ast = parse([@$tokens]);
+  evaluate(\@ast, $ENV);
+}
