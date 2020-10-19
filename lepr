@@ -19,9 +19,9 @@ sub tokenize {
 sub parse {
   my $tokens = shift;
   my $t      = shift @$tokens;
-  if    (!$t || $t eq ')') { () }
-  elsif ($t eq '(')        { [ parse($tokens) ], parse($tokens) }
-  else                     { $t, parse($tokens) }
+  if    (!defined $t || $t eq ')') { () }
+  elsif ($t eq '(')                { [ parse($tokens) ], parse($tokens) }
+  else                             { $t, parse($tokens) }
 }
 
 sub evaluate {
@@ -53,6 +53,13 @@ sub evaluate {
       evaluate([@$body], \%scope);
     };
     $name ? $env->{$name} = $fun && () : $fun; # return () when declaring
+  } elsif ($op eq 'if') {
+    my $cond = shift @$expr;
+    my $then = shift @$expr;
+    $cond = evaluate($cond, $env) if ref $cond;
+    if ($cond) { evaluate($then, $env) }
+    elsif (my $else = shift @$expr) { evaluate($else, $env) }
+    ();
   } elsif ($op eq 'call') {
     my $fun = evaluate(shift(@$expr), $env);
     $fun->((evaluate($expr, $env)));
