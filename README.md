@@ -1,6 +1,6 @@
 Lepr
 ====
-"Leper" is a tiny lisp-like (< 100 LOC) written in Perl. It supports lambdas, macros with more features on the way.
+"Leper" is a tiny Lisp-like (< 100 LOC) written in Perl. It supports lambdas, macros, conditional execution and more features are on the way.
 
 Copyright 2020 David Farrell
 
