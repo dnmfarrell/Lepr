@@ -33,24 +33,10 @@ sub evaluate {
     evaluate($op, $env), evaluate($expr, $env);
   } elsif ($op eq 'macro') {
     my $name = shift @$expr;
-    my $params = shift @$expr;
-    my $body = shift @$expr;
-    $env->{"macro $name"} = sub {
-      my @args = @_;
-      my %scope = map { $params->[$_] => $args[$_] } 0 .. $#$params;
-      $scope{OUTER} = $env;
-      evaluate([@$body], \%scope); # eval a copy so we retain the original
-    };
+    $env->{"macro $name"} = fun($expr, $env);
     ();
   } elsif ($op eq 'fun') {
-    my $params = shift @$expr;
-    my $body = shift @$expr;
-    sub {
-      my @args = @_;
-      my %scope = map { $params->[$_] => $args[$_] } 0 .. $#$params;
-      $scope{OUTER} = $env;
-      evaluate([@$body], \%scope);
-    };
+    fun($expr, $env);
   } elsif ($op eq 'if') {
     my $cond = shift @$expr;
     my $then = shift @$expr;
@@ -78,6 +64,17 @@ sub evaluate {
   } else {
     $op, evaluate($expr, $env);
   }
+}
+
+sub fun {
+  my ($expr, $env) = @_;
+  my ($params, $body) = splice @$expr, 0;
+  sub {
+    my @args = @_;
+    my %scope = map { $params->[$_] => $args[$_] } 0 .. $#$params;
+    $scope{OUTER} = $env;
+    evaluate([@$body], \%scope);
+  };
 }
 
 sub find {
