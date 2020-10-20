@@ -35,8 +35,8 @@ sub tokenize {
         if ($c eq '"') { push @tokens, $t; $t = ''; last }
         else { $t .= $c }}
     }
-    elsif ($c eq ' ')    { push @tokens, $t if $t; $t = '' }
-    elsif ($c =~ /[()]/) { push @tokens, $t if $t; $t = ''; push @tokens, $c }
+    elsif ($c eq ' ')    { push @tokens, $t if length $t; $t = '' }
+    elsif ($c =~ /[()]/) { push @tokens, $t if length $t; $t = ''; push @tokens, $c }
     else                 { $t .= $c }
   }
   \@tokens }
