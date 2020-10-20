@@ -71,7 +71,7 @@ sub evaluate {
     my ($cond, $then) = splice @$expr, 0, 2;
     ($cond) = evaluate([$cond], $env); # always eval in list context
     if ($cond) { evaluate([$then], $env) }
-    elsif (my $else = shift @$expr) { evaluate($else, $env) }
+    elsif (my $else = shift @$expr) { evaluate([$else], $env) }
   } elsif ($op eq 'call') {
     my ($fun, @args) = evaluate($expr, $env);
     $fun->(@args);
