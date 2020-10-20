@@ -1,15 +1,20 @@
 #!/usr/bin/perl
+use Data::Dumper;
 use List::Util qw(all);
+use Storable qw(dclone);
 use v5.16;
 use warnings;
+
 our $ENV = {
   print => sub { say @_ },
   split => sub { my $s = shift;split /$s/, join '', @_ },
+  dump  => sub { print Dumper(\@_) },
+  grep  => sub { my $f = shift; grep { $f->($_) } @_ },
   head  => sub { shift @_ },
   join  => sub { my $s = shift; join $s, @_ },
   sort  => sub { sort @_ },
   tail  => sub { @_[1..$#_] },
-  map   => sub { my $fun = shift; map { $fun->($_) } @_ },
+  map   => sub { my $f = shift; map { $f->($_) } @_ },
   eq    => sub { my $s = shift; all { $s eq $_ } @_ },
   '=='  => sub { my $n = shift; all { $n == $_ } @_ },
   '>='  => sub { my $n = shift; all { $n >= $_ } @_ },
@@ -23,7 +28,7 @@ our $ENV = {
   '^'   => sub { my $n = shift; $n**= $_ for @_; $n },
   '!'   => sub { map { !$_ } @_ },
 };
-run(@ARGV);
+run(join ' ', @ARGV);
 
 sub tokenize {
   my @chars = split //, shift;
@@ -35,7 +40,7 @@ sub tokenize {
         if ($c eq '"') { push @tokens, $t; $t = ''; last }
         else { $t .= $c }}
     }
-    elsif ($c eq ' ')    { push @tokens, $t if length $t; $t = '' }
+    elsif ($c =~ /\s/)   { push @tokens, $t if length $t; $t = '' }
     elsif ($c =~ /[()]/) { push @tokens, $t if length $t; $t = ''; push @tokens, $c }
     else                 { $t .= $c }
   }
@@ -72,6 +77,9 @@ sub evaluate {
     ($cond) = evaluate([$cond], $env); # always eval in list context
     if (defined $cond) { evaluate([$then], $env) }
     elsif (my $else = shift @$expr) { evaluate([$else], $env) }
+    else {
+      ()
+    }
   } elsif ($op eq 'call') {
     my ($fun, @args) = evaluate($expr, $env);
     $fun->(@args);
@@ -81,11 +89,12 @@ sub evaluate {
     ();
   } elsif (my $macro = find("macro $op", $env)) {
     $macro->(@$expr);
-  } elsif (my $symbol = find($op, $env)) {
+  } elsif (exist($op, $env)) {
+    my $symbol = find($op, $env);
     if (ref $symbol eq 'CODE') {
       $symbol->(evaluate($expr, $env));
     } elsif (ref $symbol eq 'ARRAY') {
-      evaluate([@$symbol], $env), evaluate($expr, $env);
+      evaluate(dclone($symbol), $env), evaluate($expr, $env);
     } else {
       $symbol, evaluate($expr, $env);
     }
@@ -96,26 +105,31 @@ sub evaluate {
 sub fun {
   my ($expr, $env) = @_;
   my @params = evaluate(shift @$expr, $env);
-  my @body = @$expr;
+  my $body = $expr;
   sub {
     my (@args, %scope) = @_;
     for my $p (@params) {
       if (substr($p, 0, 1) eq '@') { #list param
-        $p = substr $p, 1;
-        $env->{$p} = [splice @args, 0];
+        my $new_p = substr $p, 1;
+        $scope{$new_p} = [splice @args, 0];
       }
       else {
-        $env->{$p} = shift @args;
+        $scope{$p} = shift @args;
       }
     }
     $scope{OUTER} = $env;
-    evaluate([@body], \%scope);
+    evaluate(dclone($body), \%scope);
   }}
 
 sub find {
   my ($k, $env) = @_;
-  if    (my $v = $env->{$k})        { $v }
+  if (defined (my $v = $env->{$k})) { $v }
   elsif (my $outer = $env->{OUTER}) { find($k, $outer) }}
+
+sub exist {
+  my ($k, $env) = @_;
+  if    (exists $env->{$k})         { 1 }
+  elsif (my $outer = $env->{OUTER}) { exist($k, $outer) }}
 
 sub run {
   my ($code) = @_;
