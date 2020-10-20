@@ -61,19 +61,23 @@ sub evaluate {
     $env->{"macro $name"} = fun($expr, $env);
     ();
   } elsif ($op eq 'fun') {
-    fun($expr, $env);
+    if (ref $expr->[0]) { # anonymous fun
+      fun($expr, $env)
+    } else {
+      my $fun_name = shift @$expr;
+      $env->{$fun_name} = fun($expr, $env);
+    }
   } elsif ($op eq 'if') {
     my ($cond, $then) = splice @$expr, 0, 2;
     ($cond) = evaluate([$cond], $env); # always eval in list context
     if ($cond) { evaluate([$then], $env) }
     elsif (my $else = shift @$expr) { evaluate($else, $env) }
-    ()
   } elsif ($op eq 'call') {
     my ($fun, @args) = evaluate($expr, $env);
     $fun->(@args);
   } elsif ($op eq 'set') {
     my %pairs = @$expr;
-    $env->{$_} = $pairs{$_} for keys %pairs;
+    $env->{$_} = $pairs{$_} for keys %pairs; # lazy
     ();
   } elsif (my $macro = find("macro $op", $env)) {
     $macro->(@$expr);
