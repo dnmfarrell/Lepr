@@ -16,6 +16,25 @@ Functions
 * map
 * print
 * tail
+* print
+* split
+* head
+* join
+* sort
+* tail
+* map
+* eq
+* ==
+* >=
+* <=
+* >
+* <
+* +
+* -
+* /
+* *
+* ^
+* !
 
 Copyright 2020 David Farrell
 
