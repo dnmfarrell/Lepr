@@ -1,26 +1,45 @@
 #!/usr/bin/perl
+use List::Util qw(all);
 use v5.16;
 use warnings;
-
 our $ENV = {
   print => sub { say @_ },
+  split => sub { my $s = shift;split /$s/, join '', @_ },
   head  => sub { shift @_ },
-  join  => sub { my $str = shift; join $str, @_ },
-  tail  => sub { shift @_; @_ },
+  join  => sub { my $s = shift; join $s, @_ },
+  sort  => sub { sort @_ },
+  tail  => sub { @_[1..$#_] },
   map   => sub { my $fun = shift; map { $fun->($_) } @_ },
+  eq    => sub { my $s = shift; all { $s eq $_ } @_ },
+  '=='  => sub { my $n = shift; all { $n == $_ } @_ },
+  '>='  => sub { my $n = shift; all { $n >= $_ } @_ },
+  '<='  => sub { my $n = shift; all { $n <= $_ } @_ },
+  '>'   => sub { my $n = shift; all { $n > $_ } @_ },
+  '<'   => sub { my $n = shift; all { $n < $_ } @_ },
   '+'   => sub { my $n = shift; $n += $_ for @_; $n },
   '-'   => sub { my $n = shift; $n -= $_ for @_; $n },
   '/'   => sub { my $n = shift; $n /= $_ for @_; $n },
   '*'   => sub { my $n = shift; $n *= $_ for @_; $n },
   '^'   => sub { my $n = shift; $n**= $_ for @_; $n },
+  '!'   => sub { map { !$_ } @_ },
 };
 run(@ARGV);
 
 sub tokenize {
-  my $chars = shift;
-  $chars =~ s{\(}{( }g;
-  $chars =~ s{\)}{ )}g;
-  [ split /\s+/, $chars ]}
+  my @chars = split //, shift;
+  my ($t, @tokens) = ('');
+  while (defined(my $c = shift @chars)) {
+    if ($c eq '"') {
+      push @tokens, $t if $t; $t = '';
+      while (defined($c = shift @chars)) {
+        if ($c eq '"') { push @tokens, $t; $t = ''; last }
+        else { $t .= $c }}
+    }
+    elsif ($c eq ' ')    { push @tokens, $t if $t; $t = '' }
+    elsif ($c =~ /[()]/) { push @tokens, $t if $t; $t = ''; push @tokens, $c }
+    else                 { $t .= $c }
+  }
+  \@tokens }
 
 sub parse {
   my $t = shift @{$_[0]};
