@@ -84,9 +84,9 @@ sub evaluate {
     my ($fun, @args) = evaluate($expr, $env);
     $fun->(@args);
   } elsif ($op eq 'set') {
-    my %pairs = @$expr;
+    my %pairs = @{ shift @$expr };
     $env->{$_} = $pairs{$_} for keys %pairs; # lazy
-    ();
+    evaluate($expr, $env);
   } elsif (my $macro = find("macro $op", $env)) {
     $macro->(@$expr);
   } elsif (exist($op, $env)) {
