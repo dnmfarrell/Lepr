@@ -93,7 +93,7 @@ sub fun {
   my ($expr, $env) = @_;
   my ($params, $body) = splice @$expr, 0;
   sub {
-    my %scope = map { $params->[$_] => $_[$_] } 0 .. $#$params;
+    my %scope = map { $params->[$_] => [$_[$_]] } 0 .. $#$params;
     $scope{OUTER} = $env;
     evaluate([@$body], \%scope);
   }}
