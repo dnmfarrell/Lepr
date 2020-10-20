@@ -72,8 +72,8 @@ sub evaluate {
     my ($fun, @args) = evaluate($expr, $env);
     $fun->(@args);
   } elsif ($op eq 'set') {
-    my $name = shift @$expr;
-    $env->{$name} = $expr;
+    my %pairs = @$expr;
+    $env->{$_} = $pairs{$_} for keys %pairs;
     ();
   } elsif (my $macro = find("macro $op", $env)) {
     $macro->(@$expr);
