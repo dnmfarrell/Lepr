@@ -95,10 +95,19 @@ sub evaluate {
 
 sub fun {
   my ($expr, $env) = @_;
-  my ($params, @body) = @$expr;
+  my @params = evaluate(shift @$expr, $env);
+  my @body = @$expr;
   sub {
-    my @args = @_;
-    my %scope = map { $params->[$_] => [$args[$_]] } 0 .. $#$params;
+    my (@args, %scope) = @_;
+    for my $p (@params) {
+      if (substr($p, 0, 1) eq '@') { #list param
+        $p = substr $p, 1;
+        $env->{$p} = [splice @args, 0];
+      }
+      else {
+        $env->{$p} = shift @args;
+      }
+    }
     $scope{OUTER} = $env;
     evaluate([@body], \%scope);
   }}
