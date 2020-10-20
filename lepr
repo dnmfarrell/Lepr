@@ -54,6 +54,8 @@ sub evaluate {
     ();
   } elsif (ref $op eq 'ARRAY') {
     evaluate($op, $env), evaluate($expr, $env);
+  } elsif ($op eq 'nil') {
+    undef, evaluate($expr, $env);
   } elsif ($op eq 'macro') {
     my $name = shift @$expr;
     $env->{"macro $name"} = fun($expr, $env);
