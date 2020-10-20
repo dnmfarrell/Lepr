@@ -85,7 +85,7 @@ sub evaluate {
     if (ref $symbol eq 'CODE') {
       $symbol->(evaluate($expr, $env));
     } elsif (ref $symbol eq 'ARRAY') {
-      evaluate($symbol, $env), evaluate($expr, $env);
+      evaluate([@$symbol], $env), evaluate($expr, $env);
     } else {
       $symbol, evaluate($expr, $env);
     }
