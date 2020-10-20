@@ -30,15 +30,11 @@ Functions
     eq
     grep
     head
-    head
     join
     map
-    map
-    print
     print
     sort
     split
-    tail
     tail
 
 Copyright 2020 David Farrell
