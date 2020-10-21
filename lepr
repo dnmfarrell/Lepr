@@ -91,12 +91,13 @@ sub evaluate {
     $fun->(@args);
   } elsif ($op eq 'set') {
     my $pairs = shift @$expr;
-    die "set needs a list of key/value pairs\n" unless ref $pairs eq 'ARRAY';
-    die "set needs an even number of key/value pairs\n" if @$pairs % 2;
+    die "set needs a list of pairs\n" if ref $pairs ne 'ARRAY' || !@$pairs;
+    die "set needs an even number of keys & values\n" if @$pairs % 2;
     while (my $k = shift @$pairs) {
       die "Symbol '$k' is already set" if exists $env->{$k};
       $env->{$k} = shift @$pairs; # lazy
     }
+    die "set needs a body\n" unless @$expr;
     evaluate($expr, $env);
   } elsif (looks_like_number($op)) {
     $op, evaluate($expr, $env);
@@ -120,11 +121,13 @@ sub evaluate {
 
 sub fun {
   my ($expr, $env) = @_;
-  my @params = @{shift @$expr}; # no evaluation of fun signatures
-  my $body = $expr;
+  my $params = shift @$expr; # no evaluation of fun signatures
+  die "fun declaration must include a params list\n"
+    unless $params && ref $params eq 'ARRAY';
+  die "fun declaration must include a body\n" unless @$expr;
   sub {
     my (@args, %scope) = @_;
-    for my $p (@params) {
+    for my $p (@$params) {
       die "Missing arg for function param '$p'\n" unless @args;
       if (substr($p, 0, 1) eq '@') { # a list param
         my $new_p = substr $p, 1;
@@ -136,7 +139,7 @@ sub fun {
     die sprintf "Excess args (%s) passed to function\n",
       join ',', map { stringify($_) } @args if @args;
     $scope{OUTER} = $env;
-    evaluate(dclone($body), \%scope);
+    evaluate(dclone($expr), \%scope);
   }}
 
 sub stringify { ref $_[0] ? 'fun' : $_[0] // 'nil' }
