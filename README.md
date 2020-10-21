@@ -2,12 +2,11 @@ Lepr
 ====
 "Leper" is a tiny Lisp-like written in Perl. It supports lambdas, macros, conditional execution and more features are on the way. Unlike regular lisps, Lepr auto-expands lists reducing the need for parens and lazily evaluates expressions. Part of this experiment is to find out if those features lead to a pleasant programming experience.
 
-   ./lepr '(print "Hello, World!")'
-   Hello, World!
+    ./lepr '(print "Hello, World!")'
+    Hello, World!
 
 Keywords
 --------
-
     call
     fun
     if
@@ -17,7 +16,6 @@ Keywords
 
 Functions
 ---------
-
     !
     *
     +
