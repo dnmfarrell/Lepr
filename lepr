@@ -125,16 +125,21 @@ sub fun {
   sub {
     my (@args, %scope) = @_;
     for my $p (@params) {
+      die "Missing arg for function param '$p'\n" unless @args;
       if (substr($p, 0, 1) eq '@') { # a list param
         my $new_p = substr $p, 1;
-        $scope{$new_p} = [splice @args, 0];
+        $scope{$new_p} = [splice @args];
       } else {
         $scope{$p} = shift @args;
       }
     }
+    die sprintf "Excess args (%s) passed to function\n",
+      join ',', map { stringify($_) } @args if @args;
     $scope{OUTER} = $env;
     evaluate(dclone($body), \%scope);
   }}
+
+sub stringify { ref $_[0] ? 'fun' : $_[0] // 'nil' }
 
 sub find {
   my ($k, $env) = @_;
