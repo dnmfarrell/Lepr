@@ -87,11 +87,12 @@ sub evaluate {
     }
   } elsif ($op eq 'call') {
     my ($fun, @args) = evaluate($expr, $env);
+    die "call needs a function as its first arg\n" unless ref $fun eq 'CODE';
     $fun->(@args);
   } elsif ($op eq 'set') {
     my $pairs = shift @$expr;
     die "set needs a list of key/value pairs\n" unless ref $pairs eq 'ARRAY';
-    die "set requires an even number of key/value pairs\n" if @$pairs % 2;
+    die "set needs an even number of key/value pairs\n" if @$pairs % 2;
     while (my $k = shift @$pairs) {
       die "Symbol '$k' is already set" if exists $env->{$k};
       $env->{$k} = shift @$pairs; # lazy
