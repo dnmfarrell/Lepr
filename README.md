@@ -7,12 +7,12 @@ Lepr
 
 Keywords
 --------
-    call
-    fun
-    if
-    macro
-    nil
-    set
+    (call fun-name args*)
+    (fun [name] (params) body+)
+    (if cond then [else])
+    (macro name (params) body+)
+    (nil)
+    (set ((key value)*) body+)
 
 Functions
 ---------
