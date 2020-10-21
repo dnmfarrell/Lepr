@@ -5,6 +5,8 @@ Lepr
     ./lepr '(print "Hello, World!")'
     Hello, World!
 
+Peter Norvig's article on [Lispy](https://norvig.com/lispy.html) inspired me, I hope it inspires you too.
+
 Keywords
 --------
     (call fun-name args*)
