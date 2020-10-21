@@ -1,6 +1,7 @@
 #!/usr/bin/perl
 use Data::Dumper;
 use List::Util qw(all);
+use Scalar::Util 'looks_like_number';
 use Storable qw(dclone);
 use v5.16;
 use warnings;
@@ -36,9 +37,11 @@ sub tokenize {
   while (defined(my $c = shift @chars)) {
     if ($c eq '"') {
       push @tokens, $t if $t; $t = '';
+      STR:
       while (defined($c = shift @chars)) {
-        if ($c eq '"') { push @tokens, $t; $t = ''; last }
-        else { $t .= $c }}
+        if ($c eq '"') { my $str = $t; push @tokens, \$str; $t = ''; last STR }
+        else { $t .= $c }
+      } die "Non-terminated string\n" if $t;
     }
     elsif ($c =~ /\s/)   { push @tokens, $t if length $t; $t = '' }
     elsif ($c =~ /[()]/) { push @tokens, $t if length $t; $t = ''; push @tokens, $c }
@@ -57,6 +60,8 @@ sub evaluate {
   my $op = shift @$expr;
   if (!defined $op) {
     ();
+  } elsif (ref $op eq 'SCALAR') {
+    $$op, evaluate($expr, $env);
   } elsif (ref $op eq 'ARRAY') {
     evaluate($op, $env), evaluate($expr, $env);
   } elsif ($op eq 'nil') {
@@ -84,36 +89,45 @@ sub evaluate {
     my ($fun, @args) = evaluate($expr, $env);
     $fun->(@args);
   } elsif ($op eq 'set') {
-    my %pairs = @{ shift @$expr };
-    $env->{$_} = $pairs{$_} for keys %pairs; # lazy
+    my $pairs = shift @$expr;
+    die "set needs a list of key/value pairs\n" unless ref $pairs eq 'ARRAY';
+    die "set requires an even number of key/value pairs\n" if @$pairs % 2;
+    while (my $k = shift @$pairs) {
+      die "Symbol '$k' is already set" if exists $env->{$k};
+      $env->{$k} = shift @$pairs; # lazy
+    }
     evaluate($expr, $env);
+  } elsif (looks_like_number($op)) {
+    $op, evaluate($expr, $env);
   } elsif (my $macro = find("macro $op", $env)) {
     $macro->(@$expr);
-  } elsif (exist($op, $env)) {
+  } else {
+    die "Symbol '$op' is undefined\n" unless exist($op, $env);
     my $symbol = find($op, $env);
-    if (ref $symbol eq 'CODE') {
-      $symbol->(evaluate($expr, $env));
-    } elsif (ref $symbol eq 'ARRAY') {
-      evaluate(dclone($symbol), $env), evaluate($expr, $env);
+    if (my $reftype = ref $symbol) {
+      if ($reftype eq 'CODE') {
+        $symbol->(evaluate($expr, $env));
+      } elsif ($reftype eq 'ARRAY') {
+        evaluate(dclone($symbol), $env), evaluate($expr, $env);
+      } else {
+        $$symbol, evaluate($expr, $env);
+      }
     } else {
       $symbol, evaluate($expr, $env);
     }
-  } else {
-    $op, evaluate($expr, $env);
   }}
 
 sub fun {
   my ($expr, $env) = @_;
-  my @params = evaluate(shift @$expr, $env);
+  my @params = @{shift @$expr}; # no evaluation of fun signatures
   my $body = $expr;
   sub {
     my (@args, %scope) = @_;
     for my $p (@params) {
-      if (substr($p, 0, 1) eq '@') { #list param
+      if (substr($p, 0, 1) eq '@') { # a list param
         my $new_p = substr $p, 1;
         $scope{$new_p} = [splice @args, 0];
-      }
-      else {
+      } else {
         $scope{$p} = shift @args;
       }
     }
