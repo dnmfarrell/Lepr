@@ -29,7 +29,7 @@ our $ENV = {
   '^'   => sub { check_num_args('^',  @_) && $_[0] ** $_[1] },
   '%'   => sub { check_num_args('%',  @_) && $_[0] %  $_[1] },
 };
-run(join ' ', @ARGV);
+run(join ' ', <DATA>, @ARGV);
 
 sub check_bin_args {
   die sprintf "'%s' needs 2 args but got %d\n", $_[0], @_ - 1 unless @_ == 3}
@@ -91,9 +91,7 @@ sub evaluate {
     ($cond) = evaluate([$cond], $env); # always eval in list context
     if (defined $cond) { evaluate([$then], $env) }
     elsif (my $else = shift @$expr) { evaluate([$else], $env) }
-    else {
-      ()
-    }
+    else { () }
   } elsif ($op eq 'call') {
     my ($fun, @args) = evaluate($expr, $env);
     die "'call' needs a function as its first arg\n" unless ref $fun eq 'CODE';
@@ -168,3 +166,18 @@ sub run {
   my $tokens = tokenize($code);
   my @ast = parse([@$tokens]);
   evaluate(\@ast, $ENV)}
+__DATA__
+(fun id (x) x)
+(fun sort (@nums)
+  (if nums
+      (set (h  (head nums)
+            t  (tail nums)
+            lt (grep (fun (n) <  n h) t)
+            ge (grep (fun (n) >= n h) t))
+           (sort lt) h sort ge)))
+(fun take (x @l)
+  (if (> x 0) ((head l) take (- x 1) tail l) l))
+(fun drop (x @l)
+  (if (> x 0) (drop (- x 1) tail l) l))
+(fun rev (@l)
+  (if l ((rev tail l) head l)))
