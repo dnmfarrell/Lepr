@@ -56,9 +56,11 @@ sub parse {
 
 sub evaluate {
   my ($expr, $env) = @_;
+  return () unless @$expr;
+
   my $op = shift @$expr;
   if (!defined $op) {
-    ();
+    $op, evaluate($expr, $env);
   } elsif (ref $op eq 'SCALAR') {
     $$op, evaluate($expr, $env);
   } elsif (ref $op eq 'ARRAY') {
