@@ -101,7 +101,7 @@ sub evaluate {
       die "Symbol '$k' is already set\n" if exists $env->{$k};
       $env->{$k} = shift @$pairs; # lazy
     }
-    die "set needs a body\n" unless @$expr;
+    die "'set' needs a body\n" unless @$expr;
     evaluate($expr, $env);
   } elsif (looks_like_number($op)) {
     $op, evaluate($expr, $env);
