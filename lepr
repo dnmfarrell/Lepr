@@ -27,6 +27,7 @@ our $ENV = {
   '/'   => sub { check_num_args('/',  @_) && $_[0] /  $_[1] },
   '*'   => sub { check_num_args('*',  @_) && $_[0] *  $_[1] },
   '^'   => sub { check_num_args('^',  @_) && $_[0] ** $_[1] },
+  '%'   => sub { check_num_args('%',  @_) && $_[0] %  $_[1] },
 };
 run(join ' ', @ARGV);
 
