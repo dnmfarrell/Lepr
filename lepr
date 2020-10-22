@@ -27,7 +27,6 @@ our $ENV = {
   '/'   => sub { my $n = shift; $n /= $_ for @_; $n },
   '*'   => sub { my $n = shift; $n *= $_ for @_; $n },
   '^'   => sub { my $n = shift; $n**= $_ for @_; $n },
-  '!'   => sub { map { !$_ } @_ },
 };
 run(join ' ', @ARGV);
 
