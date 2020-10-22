@@ -148,7 +148,7 @@ sub fun {
 
 sub stringify {
   my $s = shift;
-  ref $s eq 'CODE' ? 'fun' : ref $s eq 'SCALAR' ? $$s : $s // 'nil' }
+  ref $s eq 'CODE' ? 'fun' : ref $s eq 'SCALAR' ? "\"$$s\"" : $s // 'nil' }
 
 sub find {
   my ($k, $env) = @_;
