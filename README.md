@@ -18,27 +18,28 @@ Keywords
 
 Functions
 ---------
-    !
-    *
-    +
-    -
-    /
-    <
-    <=
-    ==
-    >
-    >=
-    ^
+    atom
+    print
     dump
+    split
     eq
     grep
     head
     join
-    map
-    print
     sort
-    split
     tail
+    map
+    ==
+    >=
+    <=
+    >
+    <
+    +
+    -
+    /
+    *
+    ^
+    %
 
 Copyright 2020 David Farrell
 
