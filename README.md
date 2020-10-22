@@ -58,7 +58,7 @@ Examples
     (fun rev (@l)
       (if l ((rev tail l) head l)))
 
-    (rev 1 2 3)
+    (rev "!" "World" ", " "Hello")
 
 ### Sort (quicksort)
     (fun sort (@nums)

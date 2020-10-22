@@ -6,13 +6,13 @@ use warnings;
 
 our $ENV = {
   atom  => sub { 1 == @_ && (defined $_[0] || undef) },
-  print => sub { say join ',', map stringify($_), @_ },
-  split => sub { my $s = shift;split /$s/, join '', @_ },
-  eq    => sub { check_bin_args('eq', @_) && ($_[0] eq $_[1] || undef) },
+  print => sub { say join ',', map { stringify($_) } @_ },
+  split => sub { check_bin_args('split',@_);map \$_,split /${$_[0]}/,${$_[1]}},
+  eq    => sub { check_bin_args('eq', @_) && (${$_[0]} eq ${$_[1]} || undef) },
   grep  => sub { my $f = shift; grep { $f->($_) } @_ },
   head  => sub { shift @_ },
   fold  => sub { my ($f,$id) = splice @_,0,2; $id = $f->($id,$_) for @_; $id },
-  join  => sub { my $s = shift; join $s, @_ },
+  join  => sub { my $s = shift; \join $$s, map $$_, @_ },
   sort  => sub { sort @_ },
   tail  => sub { @_[1..$#_] },
   map   => sub { my $f = shift; map { $f->($_) } @_ },
@@ -46,9 +46,8 @@ sub tokenize {
   while (defined(my $c = shift @chars)) {
     if ($c eq '"') {
       push @tokens, $t if $t; $t = '';
-      STR:
       while (defined($c = shift @chars)) {
-        if ($c eq '"') { my $str = $t; push @tokens, \$str; $t = ''; last STR }
+        if ($c eq '"') { my $str = $t; push @tokens, \$str; $t = '';last }
         else { $t .= $c }
       } die "Non-terminated string\n" if $t;
     }
@@ -72,7 +71,7 @@ sub evaluate {
   if (!defined $op) {
     $op, evaluate($expr, $env);
   } elsif (ref $op eq 'SCALAR') {
-    $$op, evaluate($expr, $env);
+    $op, evaluate($expr, $env);
   } elsif (ref $op eq 'ARRAY') {
     evaluate($op, $env), evaluate($expr, $env);
   } elsif ($op eq 'macro') {
@@ -149,7 +148,9 @@ sub fun {
     evaluate(dclone($expr), \%scope);
   }}
 
-sub stringify { ref $_[0] ? 'fun' : $_[0] // 'nil' }
+sub stringify {
+  my $s = shift;
+  ref $s eq 'CODE' ? 'fun' : ref $s eq 'SCALAR' ? $$s : $_[0] // 'nil' }
 
 sub find {
   my ($k, $env) = @_;
