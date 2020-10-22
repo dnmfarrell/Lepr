@@ -6,6 +6,7 @@ use v5.16;
 use warnings;
 
 our $ENV = {
+  atom  => sub { 1 == @_ && defined $_[0] },
   print => sub { say @_ },
   split => sub { my $s = shift;split /$s/, join '', @_ },
   dump  => sub { print Dumper(\@_) },
