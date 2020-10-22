@@ -13,6 +13,7 @@ our $ENV = {
   eq    => sub { check_bin_args('eq', @_) && $_[0] eq $_[1] },
   grep  => sub { my $f = shift; grep { $f->($_) } @_ },
   head  => sub { shift @_ },
+  fold  => sub { my ($f,$id) = splice @_,0,2; $id = $f->($id,$_) for @_; $id },
   join  => sub { my $s = shift; join $s, @_ },
   sort  => sub { sort @_ },
   tail  => sub { @_[1..$#_] },

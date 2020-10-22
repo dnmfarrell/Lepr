@@ -23,6 +23,7 @@ Functions
     dump
     split
     eq
+    fold
     grep
     head
     join
