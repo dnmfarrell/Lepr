@@ -32,11 +32,11 @@ our $ENV = {
 run(join ' ', @ARGV);
 
 sub check_bin_args {
-  die sprintf "%s needs 2 args but got %d\n", $_[0], @_ - 1 unless @_ == 3}
+  die sprintf "'%s' needs 2 args but got %d\n", $_[0], @_ - 1 unless @_ == 3}
 
 sub check_num_args {
   check_bin_args(@_);
-  die sprintf "%s operates on nums but got (%s)\n", $_[0],
+  die sprintf "'%s' operates on nums but got (%s)\n", $_[0],
     join ',', map { stringify($_) } @_[1..$#_]
     unless @_ - 1 == grep { looks_like_number($_) } @_[1..$#_] }
 
@@ -96,12 +96,12 @@ sub evaluate {
     }
   } elsif ($op eq 'call') {
     my ($fun, @args) = evaluate($expr, $env);
-    die "call needs a function as its first arg\n" unless ref $fun eq 'CODE';
+    die "'call' needs a function as its first arg\n" unless ref $fun eq 'CODE';
     $fun->(@args);
   } elsif ($op eq 'set') {
     my $pairs = shift @$expr;
-    die "set needs a list of pairs\n" if ref $pairs ne 'ARRAY' || !@$pairs;
-    die "set needs an even number of keys & values\n" if @$pairs % 2;
+    die "'set' needs a list of pairs\n" if ref $pairs ne 'ARRAY' || !@$pairs;
+    die "'set' needs an even number of keys & values\n" if @$pairs % 2;
     while (my $k = shift @$pairs) {
       die "Symbol '$k' is already set" if exists $env->{$k};
       $env->{$k} = shift @$pairs; # lazy
