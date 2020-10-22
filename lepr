@@ -1,6 +1,5 @@
 #!/usr/bin/perl
 use Data::Dumper;
-use List::Util qw(all);
 use Scalar::Util 'looks_like_number';
 use Storable qw(dclone);
 use v5.16;
@@ -16,19 +15,28 @@ our $ENV = {
   sort  => sub { sort @_ },
   tail  => sub { @_[1..$#_] },
   map   => sub { my $f = shift; map { $f->($_) } @_ },
-  eq    => sub { my $s = shift; all { $s eq $_ } @_ },
-  '=='  => sub { my $n = shift; all { $n == $_ } @_ },
-  '>='  => sub { my $n = shift; all { $n >= $_ } @_ },
-  '<='  => sub { my $n = shift; all { $n <= $_ } @_ },
-  '>'   => sub { my $n = shift; all { $n > $_ } @_ },
-  '<'   => sub { my $n = shift; all { $n < $_ } @_ },
-  '+'   => sub { my $n = shift; $n += $_ for @_; $n },
-  '-'   => sub { my $n = shift; $n -= $_ for @_; $n },
-  '/'   => sub { my $n = shift; $n /= $_ for @_; $n },
-  '*'   => sub { my $n = shift; $n *= $_ for @_; $n },
-  '^'   => sub { my $n = shift; $n**= $_ for @_; $n },
+  eq    => sub { check_bin_args('eq', @_) && $_[0] eq $_[1] },
+  '=='  => sub { check_num_args('==', @_) && $_[0] == $_[1] },
+  '>='  => sub { check_num_args('>=', @_) && $_[0] >= $_[1] },
+  '<='  => sub { check_num_args('<=', @_) && $_[0] <= $_[1] },
+  '>'   => sub { check_num_args('>',  @_) && $_[0] >  $_[1] },
+  '<'   => sub { check_num_args('<',  @_) && $_[0] <  $_[1] },
+  '+'   => sub { check_num_args('+',  @_) && $_[0] +  $_[1] },
+  '-'   => sub { check_num_args('-',  @_) && $_[0] -  $_[1] },
+  '/'   => sub { check_num_args('/',  @_) && $_[0] /  $_[1] },
+  '*'   => sub { check_num_args('*',  @_) && $_[0] *  $_[1] },
+  '^'   => sub { check_num_args('^',  @_) && $_[0] ** $_[1] },
 };
 run(join ' ', @ARGV);
+
+sub check_bin_args {
+  die sprintf "%s needs 2 args but got %d\n", $_[0], @_ - 1 unless @_ == 3}
+
+sub check_num_args {
+  check_bin_args(@_);
+  die sprintf "%s operates on nums but got (%s)\n", $_[0],
+    join ',', map { stringify($_) } @_[1..$#_]
+    unless @_ - 1 == grep { looks_like_number($_) } @_[1..$#_] }
 
 sub tokenize {
   my @chars = split //, shift;
