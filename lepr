@@ -12,7 +12,6 @@ our $ENV = {
   head  => sub { shift @_ },
   fold  => sub { my ($f,$id) = splice @_,0,2; $id = $f->($id,$_) for @_; $id },
   join  => sub { my $s = shift; \join $$s, map $$_, @_ },
-  sort  => sub { sort @_ },
   tail  => sub { @_[1..$#_] },
   map   => sub { my $f = shift; map { $f->($_) } @_ },
   nil   => undef,
