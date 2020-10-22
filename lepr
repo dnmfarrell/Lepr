@@ -1,5 +1,4 @@
 #!/usr/bin/perl
-use Data::Dumper;
 use Scalar::Util 'looks_like_number';
 use Storable qw(dclone);
 use v5.16;
@@ -8,7 +7,6 @@ use warnings;
 our $ENV = {
   atom  => sub { 1 == @_ && defined $_[0] },
   print => sub { say join ',', map stringify($_), @_ },
-  dump  => sub { print Dumper(\@_) },
   split => sub { my $s = shift;split /$s/, join '', @_ },
   eq    => sub { check_bin_args('eq', @_) && $_[0] eq $_[1] },
   grep  => sub { my $f = shift; grep { $f->($_) } @_ },
