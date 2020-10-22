@@ -79,7 +79,7 @@ sub evaluate {
     ();
   } elsif ($op eq 'fun') {
     if (ref $expr->[0]) { # anonymous fun
-      fun($expr, $env)
+      fun($expr, $env);
     } else {
       my $fun_name = shift @$expr;
       $env->{$fun_name} = fun($expr, $env);
