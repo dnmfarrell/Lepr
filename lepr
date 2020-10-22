@@ -9,7 +9,6 @@ our $ENV = {
   print => sub { say join ',', map { stringify($_) } @_ },
   split => sub { check_bin_args('split',@_);map \$_,split /${$_[0]}/,${$_[1]}},
   eq    => sub { check_bin_args('eq', @_) && (${$_[0]} eq ${$_[1]} || undef) },
-  grep  => sub { my $f = shift; grep { $f->($_) } @_ },
   head  => sub { shift @_ },
   fold  => sub { my ($f,$id) = splice @_,0,2; $id = $f->($id,$_) for @_; $id },
   join  => sub { my $s = shift; \join $$s, map $$_, @_ },
@@ -114,7 +113,7 @@ sub evaluate {
     my $symbol = find($op, $env);
     if (my $reftype = ref $symbol) {
       if ($reftype eq 'CODE') {
-        $symbol->(evaluate($expr, $env));
+        @$expr ? $symbol->(evaluate($expr, $env)) : $symbol;
       } elsif ($reftype eq 'ARRAY') {
         evaluate(dclone($symbol), $env), evaluate($expr, $env);
       } else {
@@ -128,9 +127,8 @@ sub evaluate {
 sub fun {
   my ($expr, $env) = @_;
   my $params = shift @$expr; # no evaluation of fun signatures
-  die "fun declaration must include a params list\n"
-    unless $params && ref $params eq 'ARRAY';
-  die "fun declaration must include a body\n" unless @$expr;
+  die "'fun' needs a params list\n" unless $params && ref $params eq 'ARRAY' && @$params;
+  die "'fun' needs a body\n" unless @$expr;
   sub {
     my (@args, %scope) = @_;
     for my $p (@$params) {
@@ -169,12 +167,15 @@ sub run {
   evaluate(\@ast, $ENV)}
 __DATA__
 (fun id (x) x)
+(fun filter (f @l)
+  (if l (set (h (head l))
+             (if (f h) h) filter (f) tail l)))
 (fun sort (@nums)
   (if nums
       (set (h  (head nums)
             t  (tail nums)
-            lt (grep (fun (n) <  n h) t)
-            ge (grep (fun (n) >= n h) t))
+            lt (filter (fun (n) <  n h) t)
+            ge (filter (fun (n) >= n h) t))
            (sort lt) h sort ge)))
 (fun take (x @l)
   (if (> x 0) ((head l) take (- x 1) tail l) l))
