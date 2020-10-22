@@ -99,7 +99,7 @@ sub evaluate {
     die "'set' needs a list of pairs\n" if ref $pairs ne 'ARRAY' || !@$pairs;
     die "'set' needs an even number of keys & values\n" if @$pairs % 2;
     while (my $k = shift @$pairs) {
-      die "Symbol '$k' is already set" if exists $env->{$k};
+      die "Symbol '$k' is already set\n" if exists $env->{$k};
       $env->{$k} = shift @$pairs; # lazy
     }
     die "set needs a body\n" unless @$expr;
