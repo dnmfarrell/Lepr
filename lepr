@@ -139,11 +139,11 @@ sub fun {
   sub {
     my (@args, %scope) = @_;
     for my $p (@$params) {
-      die "Missing arg for function param '$p'\n" unless @args;
-      if (substr($p, 0, 1) eq '@') { # a list param
+      if (substr($p, 0, 1) eq '@') { # a list param, empty list acceptable
         my $new_p = substr $p, 1;
         $scope{$new_p} = [splice @args];
       } else {
+        die "Missing arg for function param '$p'\n" unless @args;
         $scope{$p} = shift @args;
       }
     }
