@@ -13,7 +13,6 @@ Keywords
     (fun [name] (params) body+)
     (if cond then [else])
     (macro name (params) body+)
-    (nil)
     (set ((key value)*) body+)
 
 Functions
@@ -30,6 +29,7 @@ Functions
     sort
     tail
     map
+    nil
     ==
     >=
     <=
