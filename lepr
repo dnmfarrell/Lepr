@@ -5,7 +5,7 @@ use v5.16;
 use warnings;
 
 our $ENV = {
-  atom  => sub { 1 == @_ && (defined $_[0] || undef) },
+  atom  => sub { (1 == @_ && defined $_[0]) || undef },
   print => sub { say join ',', map { stringify($_) } @_ },
   split => sub { check_bin_args('split',@_);map \$_,split /${$_[0]}/,${$_[1]}},
   eq    => sub { check_bin_args('eq', @_) && (${$_[0]} eq ${$_[1]} || undef) },
