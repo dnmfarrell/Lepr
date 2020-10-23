@@ -1,0 +1,9 @@
+; expect "t"
+(print (if 1 "t" "f"))
+; expect "f"
+(print (if nil "t" "f"))
+; expect 
+(print (if nil "t"))
+; an empty list is falsey
+; expect "f"
+(print (if () "t" "f"))

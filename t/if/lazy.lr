@@ -1,0 +1,4 @@
+; expect "t"
+(if 1 (print "t") (print "f"))
+; expect "f"
+(if nil (print "t") (print "f"))
