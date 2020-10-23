@@ -75,6 +75,13 @@ sub evaluate {
     my $name = shift @$expr;
     $env->{"macro $name"} = macro($expr);
     ();
+  } elsif ($op eq 'len') { # does not eval elements
+    my $list = expand(shift @$expr, $env);
+    if (ref $list eq 'ARRAY') {
+      scalar @$list;
+    } else {
+      die "'len' needs a list got: '%s'\n", stringify($list);
+    }
   } elsif ($op eq 'take') { # only eval the taken elements
     my $n = expand(shift @$expr, $env);
     die sprintf "'take' needs a num as its 1st arg: got '%s'\n", stringify($n)
