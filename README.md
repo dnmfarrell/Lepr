@@ -21,11 +21,8 @@ Built-in Functions
     print
     split
     eq
-    fold
-    grep
     head
     join
-    sort
     tail
     map
     nil
@@ -43,11 +40,22 @@ Built-in Functions
 
 Examples
 --------
+### && (predicate, lazy)
+    (macro && (x y) if x (if y y nil) nil)
+
+### || (predicate, lazy)
+    (macro || (x y) if x x (if y y nil))
+
 ### Drop
     (fun drop (x @l)
       (if (> x 0) (drop (- x 1) tail l) l))
 
     (drop 2 (1 2 3 4 5))
+
+### Filter
+    (fun filter (f @l)
+      (if l (set (h (head l))
+                 (if (f h) h) filter (f) tail l)))
 
 ### Identity
     (fun id (x) x)
@@ -73,7 +81,7 @@ Examples
 
 ### Take
     (fun take (x @l)
-      (if (> x 0) ((head l) take (- x 1) tail l) l))
+      (if (> x 0) ((head l) take (- x 1) tail l)))
 
     (take 3 (1 2 4 7 9 10))
 
