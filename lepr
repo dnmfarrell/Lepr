@@ -26,7 +26,7 @@ our $ENV = {
   '^'   => sub { check_num_args('^',  @_) && $_[0] ** $_[1] },
   '%'   => sub { check_num_args('%',  @_) && $_[0] %  $_[1] },
 };
-run(join ' ', <DATA>, @ARGV);
+run(join ' ', <DATA>, <>);
 
 sub check_bin_args {
   die sprintf "'%s' needs 2 args but got %d\n", $_[0], @_ - 1 unless @_ == 3}
@@ -41,18 +41,20 @@ sub tokenize {
   my @chars = split //, shift;
   my ($t, @tokens) = ('');
   while (defined(my $c = shift @chars)) {
-    if ($c eq '"') {
+    if ($c eq '"') { # string
       push @tokens, $t if $t; $t = '';
       while (defined($c = shift @chars)) {
         if ($c eq '"') { my $str = $t; push @tokens, \$str; $t = '';last }
         else { $t .= $c }
       } die "Non-terminated string\n" if $t;
-    }
-    elsif ($c =~ /\s/)   { push @tokens, $t if length $t; $t = '' }
-    elsif ($c =~ /[()]/) { push @tokens, $t if length $t; $t = ''; push @tokens, $c }
-    else                 { $t .= $c }
-  }
-  \@tokens }
+    } elsif ($c eq ';') { # single line comment
+      push @tokens, $t if length $t;
+      while (@chars && shift @chars ne "\n") { next }
+    } elsif ($c =~ /[\s()]/) { # delimiter
+      length $t && push(@tokens, $t) && ($t = '');
+      push @tokens, $c if $c =~ /\S/;
+    } else { $t .= $c }}
+    \@tokens }
 
 sub parse {
   my $t = shift @{$_[0]};

@@ -1,0 +1,3 @@
+; some helpful comment
+(print "foobar")
+; expect "foobar"

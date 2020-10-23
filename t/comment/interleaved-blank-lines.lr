@@ -1,0 +1,4 @@
+(print
+; a comment in your code
+"foobar")
+; expect "foobar"
