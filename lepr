@@ -84,6 +84,8 @@ sub evaluate {
       $env->{$fun_name} = fun($expr, $env);
     }
   } elsif ($op eq 'if') {
+    die sprintf "'if' needs 2 or 3 args but got %d\n", scalar @$expr
+      unless @$expr >= 2 && @$expr <= 3;
     my ($cond, $then) = splice @$expr, 0, 2;
     ($cond) = evaluate([$cond], $env); # always eval in list context
     if (defined $cond) { evaluate([$then], $env) }
