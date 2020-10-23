@@ -1,15 +1,15 @@
 ; expect nil
 (print && nil nil)
 ; expect nil
-(print && nil (print "not nil haha"))
+(print && () (print "not nil haha"))
 ; expect nil
 (print && 1 nil)
 ; expect nil
-(print && (1 nil))
+(print && 1 (nil))
 ; expect 1
 (print && 1 1)
 ; expect 1
-(print && (1 1))
+(print && 1 1)
 
 ; expect nil
 (print || nil nil)
@@ -18,8 +18,8 @@
 ; expect 1
 (print || 1 nil)
 ; expect 1
-(print || (nil 1))
+(print || nil 1)
 ; expect 1
 (print || 1 1)
 ; expect 1
-(print || (1 1))
+(print || (1) 1)

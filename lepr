@@ -132,12 +132,23 @@ sub expand { exist($_[0], $_[1]) ? find($_[0], $_[1]) : $_[0] }
 
 sub macro {
   my ($expr) = @_;
+  my $params = shift @$expr;
+  die "'macro' needs a params list\n" unless $params && ref $params eq 'ARRAY' && @$params;
   die "'macro' needs a body\n" unless @$expr;
   sub {
-    my ($env, @args) = @_;
-    my %scope = (
-      '@a' => [map { my $v = expand($_, $env); ref $v eq 'ARRAY' ? @$v : $v } @args],
-      OUTER => $env );
+    my ($env, @args, %scope) = @_;
+    my @expand = map { expand($_, $env) } @args;
+    for my $p (@$params) {
+      if (substr($p, 0, 1) eq '@') { # a list param, empty list acceptable
+        $scope{$p} = [splice @expand];
+      } else {
+        die "Missing arg for macro param '$p'\n" unless @expand;
+        $scope{$p} = shift @expand;
+      }
+    }
+    die sprintf "Excess args (%s) passed to macro\n",
+      join ',', map { stringify($_) } @expand if @expand;
+    $scope{OUTER} = $env;
     evaluate(dclone($expr), \%scope);
   }}
 
@@ -186,8 +197,8 @@ sub run {
   my @ast = parse([@$tokens]);
   evaluate(\@ast, $ENV)}
 __DATA__
-(macro && (if (head @a) (if (tail @a) (tail @a) nil) nil))
-(macro || (if (head @a) (head @a) (if (tail @a) (tail @a) nil)))
+(macro && (x y) (if x (if y y nil) nil))
+(macro || (x y) (if x x (if y y nil)))
 (set id (fun (x) x))
 ;     filter (fun (f @l)
 ;                 (set h (head l))
