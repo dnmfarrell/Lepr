@@ -1,0 +1,6 @@
+; expect 
+(print (rev ()))
+; expect 3,2,1
+(print (rev 1 2 3))
+; expect 3,2,1
+(print (rev (1 2 3)))

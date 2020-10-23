@@ -198,7 +198,8 @@ sub run {
 __DATA__
 (macro && (x y) (if x (if y y nil) nil))
 (macro || (x y) (if x x (if y y nil)))
-(set id (fun (x) x))
+(set id (fun (x) x)
+     rev (fun (@l) (if @l ((rev tail @l) head @l))))
 ;     filter (fun (f @l)
 ;                 (set h (head l))
 ;                 (if h (if (f h) h) ))) ; filter (f) tail l))))
@@ -211,4 +212,3 @@ __DATA__
 ;            (sort lt) h sort ge)))
 ; (fun take (x @l) (if (> x 0) ((head l) take (- x 1) tail l)))
 ; (fun drop (x @l) (if (> x 0) (drop (- x 1) tail l) l))
-; (fun rev (@l) (if l ((rev tail l) head l)))
