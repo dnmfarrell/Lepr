@@ -1,0 +1,5 @@
+; expect 1
+; expect 2
+; expect 3
+(set r (fun (x @l) (print x) (if (tail l) (r l))))
+(r 1 2 3 4)

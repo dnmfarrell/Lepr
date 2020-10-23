@@ -7,3 +7,5 @@
 ; an empty list is falsey
 ; expect "f"
 (print (if () "t" "f"))
+; expect 1
+(print (if 1 (if 1 1 nil) nil))

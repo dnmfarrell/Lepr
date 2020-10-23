@@ -1,0 +1,5 @@
+; expect 1
+; expect 2
+(macro r (set t (tail @a))
+         (if t ((print head @a) (r t))))
+(r (1 2 3))

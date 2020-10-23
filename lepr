@@ -9,10 +9,7 @@ our $ENV = {
   print => sub { say join ',', map { stringify($_) } @_ },
   split => sub { check_bin_args('split',@_);map \$_,split /${$_[0]}/,${$_[1]}},
   eq    => sub { check_bin_args('eq', @_) && (${$_[0]} eq ${$_[1]} || undef) },
-  head  => sub { @_ > 0 ? shift @_ : () },
-  fold  => sub { my ($f,$id) = splice @_,0,2; $id = $f->($id,$_) for @_; $id },
   join  => sub { my $s = shift; \join $$s, map $$_, @_ },
-  tail  => sub { @_ > 1 ? @_[1..$#_] : () },
   map   => sub { my $f = shift; map { $f->($_) } @_ },
   '=='  => sub { check_num_args('==', @_) && ($_[0] == $_[1] || undef) },
   '>='  => sub { check_num_args('>=', @_) && ($_[0] >= $_[1] || undef) },
@@ -76,8 +73,23 @@ sub evaluate {
     evaluate($op, $env), evaluate($expr, $env);
   } elsif ($op eq 'macro') {
     my $name = shift @$expr;
-    $env->{"macro $name"} = fun($expr, $env);
+    $env->{"macro $name"} = macro($expr);
     ();
+  } elsif ($op eq 'head') { # only eval the head element
+    my $expand = expand(shift @$expr, $env);
+    ref $expand eq 'ARRAY' && @$expand ? evaluate([shift @$expand], $env)
+                                       : evaluate([$expand], $env);
+  } elsif ($op eq 'last') { # only eval the last element
+    my $expand = expand(pop @$expr, $env);
+    ref $expand eq 'ARRAY' && @$expand ? evaluate([pop @$expand], $env)
+                                       : evaluate([$expand], $env);
+  } elsif ($op eq 'tail') { # only eval the tail elements
+    my $expand = expand(shift @$expr, $env);
+    if (ref $expand eq 'ARRAY') {
+      @$expand > 1 ? evaluate([@{$expand}[1..$#$expand]], $env) : ();
+    } else {
+      evaluate($expr, $env); # we already shifted expr
+    }
   } elsif ($op eq 'fun') {
     fun($expr, $env);
   } elsif ($op eq 'if') {
@@ -88,10 +100,6 @@ sub evaluate {
     if (defined $cond) { evaluate([$then], $env) }
     elsif (@$expr) { evaluate([shift @$expr], $env) }
     else { () }
-  } elsif ($op eq 'call') {
-    my ($fun, @args) = evaluate($expr, $env);
-    die "'call' needs a function as its first arg\n" unless ref $fun eq 'CODE';
-    $fun->(@args);
   } elsif ($op eq 'set') {
     die "'set' needs a list of pairs\n" unless @$expr;
     die "'set' needs an even number of keys & values\n" if @$expr % 2;
@@ -103,7 +111,7 @@ sub evaluate {
   } elsif (looks_like_number($op)) {
     $op, evaluate($expr, $env);
   } elsif (my $macro = find("macro $op", $env)) {
-      @$expr ? $macro->(@$expr) : $macro;
+      @$expr ? $macro->($env, @$expr) : $macro;
   } else {
     die "Symbol '$op' is undefined\n" unless exist($op, $env);
     my $symbol = find($op, $env);
@@ -111,13 +119,26 @@ sub evaluate {
       if ($reftype eq 'CODE') {
         @$expr ? $symbol->(evaluate($expr, $env)) : $symbol;
       } elsif ($reftype eq 'ARRAY') {
-        evaluate(dclone($symbol), $env), evaluate($expr, $env);
+        evaluate($symbol, $env), evaluate($expr, $env);
       } else {
         $symbol, evaluate($expr, $env);
       }
     } else {
       $symbol, evaluate($expr, $env);
     }
+  }}
+
+sub expand { exist($_[0], $_[1]) ? find($_[0], $_[1]) : $_[0] }
+
+sub macro {
+  my ($expr) = @_;
+  die "'macro' needs a body\n" unless @$expr;
+  sub {
+    my ($env, @args) = @_;
+    my %scope = (
+      '@a' => [map { my $v = expand($_, $env); ref $v eq 'ARRAY' ? @$v : $v } @args],
+      OUTER => $env );
+    evaluate(dclone($expr), \%scope);
   }}
 
 sub fun {
@@ -148,8 +169,11 @@ sub stringify {
 
 sub find {
   my ($k, $env) = @_;
-  if (defined (my $v = $env->{$k})) { $v }
-  elsif (my $outer = $env->{OUTER}) { find($k, $outer) }}
+  if (exists $env->{$k}){
+    my $v = $env->{$k};
+    my $reftype = ref $v;
+    $reftype && $reftype ne 'CODE' ? dclone($v) : $v; # no action-at-distance
+  } elsif (my $outer = $env->{OUTER}) { find($k, $outer) }}
 
 sub exist {
   my ($k, $env) = @_;
@@ -162,6 +186,8 @@ sub run {
   my @ast = parse([@$tokens]);
   evaluate(\@ast, $ENV)}
 __DATA__
+(macro && (if (head @a) (if (tail @a) (tail @a) nil) nil))
+(macro || (if (head @a) (head @a) (if (tail @a) (tail @a) nil)))
 (set id (fun (x) x))
 ;     filter (fun (f @l)
 ;                 (set h (head l))
@@ -176,5 +202,3 @@ __DATA__
 ; (fun take (x @l) (if (> x 0) ((head l) take (- x 1) tail l)))
 ; (fun drop (x @l) (if (> x 0) (drop (- x 1) tail l) l))
 ; (fun rev (@l) (if l ((rev tail l) head l)))
-; (macro && (x y) if x (if y y nil) nil)
-; (macro || (x y) if x x (if y y nil))

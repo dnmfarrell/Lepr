@@ -1,0 +1,3 @@
+; expect "foo"
+(macro m  print head @a)
+(m "foo" (print "bar"))
