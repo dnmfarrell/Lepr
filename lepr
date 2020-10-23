@@ -14,7 +14,6 @@ our $ENV = {
   join  => sub { my $s = shift; \join $$s, map $$_, @_ },
   tail  => sub { @_[1..$#_] },
   map   => sub { my $f = shift; map { $f->($_) } @_ },
-  nil   => undef,
   '=='  => sub { check_num_args('==', @_) && ($_[0] == $_[1] || undef) },
   '>='  => sub { check_num_args('>=', @_) && ($_[0] >= $_[1] || undef) },
   '<='  => sub { check_num_args('<=', @_) && ($_[0] <= $_[1] || undef) },
@@ -59,6 +58,7 @@ sub parse {
   my $t = shift @{$_[0]};
   if    (!defined $t || $t eq ')') { () }
   elsif ($t eq '(')                { [ parse(@_) ], parse(@_) }
+  elsif ($t eq 'nil')              { undef, parse(@_) }
   else                             { $t, parse(@_) }}
 
 sub evaluate {
