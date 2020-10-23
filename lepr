@@ -9,10 +9,10 @@ our $ENV = {
   print => sub { say join ',', map { stringify($_) } @_ },
   split => sub { check_bin_args('split',@_);map \$_,split /${$_[0]}/,${$_[1]}},
   eq    => sub { check_bin_args('eq', @_) && (${$_[0]} eq ${$_[1]} || undef) },
-  head  => sub { shift @_ },
+  head  => sub { @_ > 0 ? shift @_ : () },
   fold  => sub { my ($f,$id) = splice @_,0,2; $id = $f->($id,$_) for @_; $id },
   join  => sub { my $s = shift; \join $$s, map $$_, @_ },
-  tail  => sub { @_[1..$#_] },
+  tail  => sub { @_ > 1 ? @_[1..$#_] : () },
   map   => sub { my $f = shift; map { $f->($_) } @_ },
   '=='  => sub { check_num_args('==', @_) && ($_[0] == $_[1] || undef) },
   '>='  => sub { check_num_args('>=', @_) && ($_[0] >= $_[1] || undef) },
@@ -79,12 +79,7 @@ sub evaluate {
     $env->{"macro $name"} = fun($expr, $env);
     ();
   } elsif ($op eq 'fun') {
-    if (ref $expr->[0]) { # anonymous fun
-      fun($expr, $env);
-    } else {
-      my $fun_name = shift @$expr;
-      $env->{$fun_name} = fun($expr, $env);
-    }
+    fun($expr, $env);
   } elsif ($op eq 'if') {
     die sprintf "'if' needs 2 or 3 args but got %d\n", scalar @$expr
       unless @$expr >= 2 && @$expr <= 3;
@@ -98,15 +93,13 @@ sub evaluate {
     die "'call' needs a function as its first arg\n" unless ref $fun eq 'CODE';
     $fun->(@args);
   } elsif ($op eq 'set') {
-    my $pairs = shift @$expr;
-    die "'set' needs a list of pairs\n" if ref $pairs ne 'ARRAY' || !@$pairs;
-    die "'set' needs an even number of keys & values\n" if @$pairs % 2;
-    while (my $k = shift @$pairs) {
+    die "'set' needs a list of pairs\n" unless @$expr;
+    die "'set' needs an even number of keys & values\n" if @$expr % 2;
+    while (my $k = shift @$expr) {
       die "Symbol '$k' is already set\n" if exists $env->{$k};
-      $env->{$k} = shift @$pairs; # lazy
+      my @v = evaluate([shift @$expr], $env);
+      $env->{$k} = @v > 1 ? \@v : $v[0];
     }
-    die "'set' needs a body\n" unless @$expr;
-    evaluate($expr, $env);
   } elsif (looks_like_number($op)) {
     $op, evaluate($expr, $env);
   } elsif (my $macro = find("macro $op", $env)) {
@@ -120,7 +113,7 @@ sub evaluate {
       } elsif ($reftype eq 'ARRAY') {
         evaluate(dclone($symbol), $env), evaluate($expr, $env);
       } else {
-        $$symbol, evaluate($expr, $env);
+        $symbol, evaluate($expr, $env);
       }
     } else {
       $symbol, evaluate($expr, $env);
@@ -169,19 +162,19 @@ sub run {
   my @ast = parse([@$tokens]);
   evaluate(\@ast, $ENV)}
 __DATA__
-(fun id (x) x)
-(fun filter (f @l)
-  (if l (set (h (head l))
-             (if (f h) h) filter (f) tail l)))
-(fun sort (@nums)
-  (if nums
-      (set (h  (head nums)
-            t  (tail nums)
-            lt (filter (fun (n) <  n h) t)
-            ge (filter (fun (n) >= n h) t))
-           (sort lt) h sort ge)))
-(fun take (x @l) (if (> x 0) ((head l) take (- x 1) tail l)))
-(fun drop (x @l) (if (> x 0) (drop (- x 1) tail l) l))
-(fun rev (@l) (if l ((rev tail l) head l)))
-(macro && (x y) if x (if y y nil) nil)
-(macro || (x y) if x x (if y y nil))
+(set id (fun (x) x))
+;     filter (fun (f @l)
+;                 (set h (head l))
+;                 (if h (if (f h) h) ))) ; filter (f) tail l))))
+; (fun sort (@nums)
+;   (if nums
+;       (set (h  (head nums)
+;             t  (tail nums)
+;             lt (filter (fun (n) <  n h) t)
+;             ge (filter (fun (n) >= n h) t))
+;            (sort lt) h sort ge)))
+; (fun take (x @l) (if (> x 0) ((head l) take (- x 1) tail l)))
+; (fun drop (x @l) (if (> x 0) (drop (- x 1) tail l) l))
+; (fun rev (@l) (if l ((rev tail l) head l)))
+; (macro && (x y) if x (if y y nil) nil)
+; (macro || (x y) if x x (if y y nil))

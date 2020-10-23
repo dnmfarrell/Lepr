@@ -1,0 +1,4 @@
+; expect 1
+(print (id 1))
+; expect nil
+(print (id nil))

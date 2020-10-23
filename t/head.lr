@@ -1,0 +1,4 @@
+; expect 1
+(print (head 1 2 3))
+; expect 
+(print (head ()))

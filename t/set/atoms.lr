@@ -1,0 +1,6 @@
+; expect 1,nil,"foobar",1.5
+(set a 1
+     b nil
+     c "foobar"
+     d 1.5)
+(print a b c d)
