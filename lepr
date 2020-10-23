@@ -156,7 +156,7 @@ sub find {
 
 sub exist {
   my ($k, $env) = @_;
-  if    (exists $env->{$k})         { 1 }
+  if    ($k && exists $env->{$k})   { 1 }
   elsif (my $outer = $env->{OUTER}) { exist($k, $outer) }}
 
 sub run {
