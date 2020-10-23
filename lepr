@@ -75,20 +75,39 @@ sub evaluate {
     my $name = shift @$expr;
     $env->{"macro $name"} = macro($expr);
     ();
-  } elsif ($op eq 'head') { # only eval the head element
-    my $expand = expand(shift @$expr, $env);
-    ref $expand eq 'ARRAY' && @$expand ? evaluate([shift @$expand], $env)
-                                       : evaluate([$expand], $env);
-  } elsif ($op eq 'last') { # only eval the last element
-    my $expand = expand(pop @$expr, $env);
-    ref $expand eq 'ARRAY' && @$expand ? evaluate([pop @$expand], $env)
-                                       : evaluate([$expand], $env);
-  } elsif ($op eq 'tail') { # only eval the tail elements
-    my $expand = expand(shift @$expr, $env);
-    if (ref $expand eq 'ARRAY') {
-      @$expand > 1 ? evaluate([@{$expand}[1..$#$expand]], $env) : ();
+  } elsif ($op eq 'take') { # only eval the taken elements
+    my $n = expand(shift @$expr, $env);
+    die sprintf "'take' needs a num as its 1st arg: got '%s'\n", stringify($n)
+      unless looks_like_number($n) && $n > 0;
+
+    my $list = expand(shift @$expr, $env);
+    if (ref $list eq 'ARRAY') {
+      my $len = @$list;
+      if ($len == 0) {
+        ();
+      } elsif ($len < $n) {
+        evaluate([@{$list}[0..$#$list]], $env);
+      } else {
+        evaluate([@{$list}[0..--$n]], $env);
+      }
     } else {
-      evaluate($expr, $env); # we already shifted expr
+      die "'take' needs a list as its 2nd arg: got '%s'\n", stringify($list);
+    }
+  } elsif ($op eq 'drop') { # only eval the remaining elements
+    my $n = expand(shift @$expr, $env);
+    die sprintf "'drop' needs a num as its 1st arg: got '%s'\n", stringify($n)
+      unless looks_like_number($n) && $n > 0;
+
+    my $list = expand(shift @$expr, $env);
+    if (ref $list eq 'ARRAY') {
+      my $len = @$list;
+      if ($len <= $n) {
+        ();
+      } else {
+        evaluate([@{$list}[$n..$#$list]], $env);
+      }
+    } else {
+      die "'drop' needs a list as its 2nd arg: got '%s'\n", stringify($list);
     }
   } elsif ($op eq 'fun') {
     fun($expr, $env);
@@ -128,7 +147,10 @@ sub evaluate {
     }
   }}
 
-sub expand { exist($_[0], $_[1]) ? find($_[0], $_[1]) : $_[0] }
+sub expand {
+  my ($s, $env) = @_;
+  if (ref $s eq 'ARRAY') { [ map { expand($_, $env) } @$s ] }
+  else { exist($s, $env) ? find($s, $env) : $s }}
 
 sub macro {
   my ($expr) = @_;
@@ -139,8 +161,10 @@ sub macro {
     my ($env, @args, %scope) = @_;
     my @expand = map { expand($_, $env) } @args;
     for my $p (@$params) {
-      if (substr($p, 0, 1) eq '@') { # a list param, empty list acceptable
-        $scope{$p} = [splice @expand];
+      if (substr($p, 0, 1) eq '@') { # a list param
+        die sprintf "param '$p' must be a list but got: '%s'\n"
+          unless ref $expand[0] eq 'ARRAY';
+        $scope{$p} = shift @expand;
       } else {
         die "Missing arg for macro param '$p'\n" unless @expand;
         $scope{$p} = shift @expand;
@@ -179,11 +203,16 @@ sub stringify {
 
 sub find {
   my ($k, $env) = @_;
-  if (exists $env->{$k}){
-    my $v = $env->{$k};
-    my $reftype = ref $v;
-    $reftype && $reftype ne 'CODE' ? dclone($v) : $v; # no action-at-distance
-  } elsif (my $outer = $env->{OUTER}) { find($k, $outer) }}
+  if (exists $env->{$k}){ safeclone($env->{$k}) }
+  elsif (my $outer = $env->{OUTER}) { find($k, $outer) }}
+
+sub safeclone {
+  my $v = shift;
+  my $reftype = ref $v;
+  if ($reftype eq 'ARRAY') {[ map { safeclone($_) } @$v ] }
+  elsif ($reftype eq 'CODE' || !$reftype) { $v }
+  else { dclone($v) }
+}
 
 sub exist {
   my ($k, $env) = @_;
@@ -198,11 +227,14 @@ sub run {
 __DATA__
 (macro && (x y) (if x (if y y nil) nil))
 (macro || (x y) (if x x (if y y nil)))
+(macro head (@l) take 1 @l)
+(macro tail (@l) drop 1 @l)
 (set id (fun (x) x)
      rev (fun (@l) (if @l ((rev tail @l) head @l))))
 ;     filter (fun (f @l)
-;                 (set h (head l))
-;                 (if h (if (f h) h) ))) ; filter (f) tail l))))
+;                 (set h (head @l))
+;                 (if h ((if (f h) h)
+;                        (filter (f) tail @l)))))
 ; (fun sort (@nums)
 ;   (if nums
 ;       (set (h  (head nums)
@@ -210,5 +242,3 @@ __DATA__
 ;             lt (filter (fun (n) <  n h) t)
 ;             ge (filter (fun (n) >= n h) t))
 ;            (sort lt) h sort ge)))
-; (fun take (x @l) (if (> x 0) ((head l) take (- x 1) tail l)))
-; (fun drop (x @l) (if (> x 0) (drop (- x 1) tail l) l))

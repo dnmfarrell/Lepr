@@ -27,9 +27,5 @@ sub test_file {
     $expected .= $1 if $line =~ qr{; expect (.+)$}s;
   }
   my $output = join '', `$^X -Ilib $LEPR_PATH $filepath`;
-  my $result = is($output, $expected, "Got expected output for $filepath");
-  unless ($result) {
-    print "TEST BEGIN\n${test_content}TEST END\n";
-    exit 1;
-  }
+  is($output, $expected, "Got expected output for $filepath");
 }
