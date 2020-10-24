@@ -1,8 +1,8 @@
-; expect 2,3
+; expect (2,3)
 (print drop 1 (1 2 3))
 ; expect 
 (print drop 1 ())
 ; expect 
 (print drop 3 (1 2 (print "foo"))) ; lazy
-; expect 5
+; expect (5)
 (print drop 3 (2 3 4 5))

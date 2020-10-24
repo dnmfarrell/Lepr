@@ -1,5 +1,5 @@
 ; expect 1
 ; expect 2
-(macro r (h @t) (set hn (head @t) tn (tail @t))
-         (if @t ((print h) (r hn (tn)))))
+(set r (macro (h @t) (set hn (head @t) tn (tail @t))
+                     (if @t ((print h) (r hn (tn))))))
 (r 1 (2 3))

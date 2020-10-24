@@ -5,26 +5,26 @@ use v5.16;
 use warnings;
 
 our $ENV = {
-  atom  => sub { (1 == @_ && defined $_[0]) || undef },
-  print => sub { say join ',', map { stringify($_) } @_ },
-  split => sub { check_bin_args('split',@_);map \$_,split /${$_[0]}/,${$_[1]}},
-  eq    => sub { check_bin_args('eq', @_) && (${$_[0]} eq ${$_[1]} || undef) },
-  join  => sub { my $s = shift; \join $$s, map $$_, @_ },
-  map   => sub { my $f = shift; map { $f->($_) } @_ },
-  '=='  => sub { check_num_args('==', @_) && ($_[0] == $_[1] || undef) },
-  '>='  => sub { check_num_args('>=', @_) && ($_[0] >= $_[1] || undef) },
-  '<='  => sub { check_num_args('<=', @_) && ($_[0] <= $_[1] || undef) },
-  '>'   => sub { check_num_args('>',  @_) && ($_[0] >  $_[1] || undef) },
-  '<'   => sub { check_num_args('<',  @_) && ($_[0] <  $_[1] || undef) },
-  '+'   => sub { check_num_args('+',  @_) && $_[0] +  $_[1] },
-  '-'   => sub { check_num_args('-',  @_) && $_[0] -  $_[1] },
-  '/'   => sub { check_num_args('/',  @_) && $_[0] /  $_[1] },
-  '*'   => sub { check_num_args('*',  @_) && $_[0] *  $_[1] },
-  '^'   => sub { check_num_args('^',  @_) && $_[0] ** $_[1] },
-  '%'   => sub { check_num_args('%',  @_) && $_[0] %  $_[1] },
+  atom  => sub { @_=p(@_);(1 == @_ && defined $_[0]) || undef },
+  print => sub { @_=p(@_);say stringify(@_) },
+  split => sub { @_=p(@_);check_bin_args('split',@_);map \$_,split /${$_[0]}/,${$_[1]}},
+  eq    => sub { @_=p(@_);check_bin_args('eq', @_) && (${$_[0]} eq ${$_[1]} || undef) },
+  join  => sub { @_=p(@_);my $s = shift; \join $$s, map $$_, @_ },
+  '=='  => sub { @_=p(@_);check_num_args('==', @_) && ($_[0] == $_[1] || undef) },
+  '>='  => sub { @_=p(@_);check_num_args('>=', @_) && ($_[0] >= $_[1] || undef) },
+  '<='  => sub { @_=p(@_);check_num_args('<=', @_) && ($_[0] <= $_[1] || undef) },
+  '>'   => sub { @_=p(@_);check_num_args('>',  @_) && ($_[0] >  $_[1] || undef) },
+  '<'   => sub { @_=p(@_);check_num_args('<',  @_) && ($_[0] <  $_[1] || undef) },
+  '+'   => sub { @_=p(@_);check_num_args('+',  @_) && $_[0] +  $_[1] },
+  '-'   => sub { @_=p(@_);check_num_args('-',  @_) && $_[0] -  $_[1] },
+  '/'   => sub { @_=p(@_);check_num_args('/',  @_) && $_[0] /  $_[1] },
+  '*'   => sub { @_=p(@_);check_num_args('*',  @_) && $_[0] *  $_[1] },
+  '^'   => sub { @_=p(@_);check_num_args('^',  @_) && $_[0] ** $_[1] },
+  '%'   => sub { @_=p(@_);check_num_args('%',  @_) && $_[0] %  $_[1] },
 };
 run(join ' ', <DATA>, <>);
 
+sub p { evaluate($_[1], $_[0]) }
 sub check_bin_args {
   die sprintf "'%s' needs 2 args but got %d\n", $_[0], @_ - 1 unless @_ == 3}
 
@@ -47,7 +47,7 @@ sub tokenize {
     } elsif ($c eq ';') { # single line comment
       push @tokens, $t if length $t;
       while (@chars && shift @chars ne "\n") { next }
-    } elsif ($c =~ /[\s()]/) { # delimiter
+    } elsif ($c =~ /[\s'()]/) { # delimiter
       length $t && push(@tokens, $t) && ($t = '');
       push @tokens, $c if $c =~ /\S/;
     } else { $t .= $c }}
@@ -67,14 +67,16 @@ sub evaluate {
   my $op = shift @$expr;
   if (!defined $op) {
     $op, evaluate($expr, $env);
+  } elsif ($op eq "'") {
+    my $symbol = shift @$expr;
+    die "Symbol '$symbol' is undefined\n" unless exist($symbol, $env);
+    find($symbol, $env), evaluate($expr, $env);
   } elsif (ref $op eq 'SCALAR') {
     $op, evaluate($expr, $env);
   } elsif (ref $op eq 'ARRAY') {
     evaluate($op, $env), evaluate($expr, $env);
   } elsif ($op eq 'macro') {
-    my $name = shift @$expr;
-    $env->{"macro $name"} = macro($expr);
-    ();
+    macro($expr);
   } elsif ($op eq 'len') { # does not eval elements
     my $list = expand(shift @$expr, $env);
     if (ref $list eq 'ARRAY') {
@@ -110,8 +112,11 @@ sub evaluate {
       my $len = @$list;
       if ($len <= $n) {
         ();
+      } elsif ($len - $n == 1) {
+        # don't expand the list into a scalar
+        [evaluate([@{$list}[$n..$#$list]], $env)];
       } else {
-        evaluate([@{$list}[$n..$#$list]], $env);
+        [evaluate([@{$list}[$n..$#$list]], $env)];
       }
     } else {
       die "'drop' needs a list as its 2nd arg: got '%s'\n", stringify($list);
@@ -123,7 +128,7 @@ sub evaluate {
       unless @$expr >= 2 && @$expr <= 3;
     my ($cond, $then) = splice @$expr, 0, 2;
     ($cond) = evaluate([$cond], $env); # always eval in list context
-    if (defined $cond) { evaluate([$then], $env) }
+    if (true($cond)) { evaluate([$then], $env) }
     elsif (@$expr) { evaluate([shift @$expr], $env) }
     else { () }
   } elsif ($op eq 'set') {
@@ -134,16 +139,15 @@ sub evaluate {
       my @v = evaluate([shift @$expr], $env);
       $env->{$k} = @v > 1 ? \@v : $v[0];
     }
+    ();
   } elsif (looks_like_number($op)) {
     $op, evaluate($expr, $env);
-  } elsif (my $macro = find("macro $op", $env)) {
-      @$expr ? $macro->($env, @$expr) : $macro;
   } else {
     die "Symbol '$op' is undefined\n" unless exist($op, $env);
     my $symbol = find($op, $env);
     if (my $reftype = ref $symbol) {
       if ($reftype eq 'CODE') {
-        @$expr ? $symbol->(evaluate($expr, $env)) : $symbol;
+        @$expr ? $symbol->($env, $expr) : $symbol;
       } elsif ($reftype eq 'ARRAY') {
         evaluate($symbol, $env), evaluate($expr, $env);
       } else {
@@ -153,6 +157,8 @@ sub evaluate {
       $symbol, evaluate($expr, $env);
     }
   }}
+
+sub true { defined $_[0] && (ref $_[0] ne 'ARRAY' || @{$_[0]}) }
 
 sub expand {
   my ($s, $env) = @_;
@@ -165,11 +171,11 @@ sub macro {
   die "'macro' needs a params list\n" unless $params && ref $params eq 'ARRAY' && @$params;
   die "'macro' needs a body\n" unless @$expr;
   sub {
-    my ($env, @args, %scope) = @_;
-    my @expand = map { expand($_, $env) } @args;
+    my ($env, $args, %scope) = @_;
+    my @expand = map { expand($_, $env) } @$args;
     for my $p (@$params) {
       if (substr($p, 0, 1) eq '@') { # a list param
-        die sprintf "param '$p' must be a list but got: '%s'\n"
+        die sprintf "param '$p' must be a list but got: '%s'\n", stringify($expand[0])
           unless ref $expand[0] eq 'ARRAY';
         $scope{$p} = shift @expand;
       } else {
@@ -189,7 +195,7 @@ sub fun {
   die "'fun' needs a params list\n" unless $params && ref $params eq 'ARRAY' && @$params;
   die "'fun' needs a body\n" unless @$expr;
   sub {
-    my (@args, %scope) = @_;
+    my (@args, %scope) = evaluate($_[1], $_[0]);
     for my $p (@$params) {
       if (substr($p, 0, 1) eq '@') { # a list param, empty list acceptable
         $scope{$p} = [splice @args];
@@ -205,8 +211,12 @@ sub fun {
   }}
 
 sub stringify {
-  my $s = shift;
-  ref $s eq 'CODE' ? 'fun' : ref $s eq 'SCALAR' ? "\"$$s\"" : $s // 'nil' }
+  join ',', map {
+    my $reftype = ref $_;
+    if ($reftype eq 'CODE') { 'fun' }
+    elsif ($reftype eq 'SCALAR') { "\"$$_\"" }
+    elsif ($reftype eq 'ARRAY') { sprintf '(%s)', join ',', map { stringify($_) } @$_ }
+    else { $_ // 'nil' }} @_ }
 
 sub find {
   my ($k, $env) = @_;
@@ -232,20 +242,31 @@ sub run {
   my @ast = parse([@$tokens]);
   evaluate(\@ast, $ENV)}
 __DATA__
-(macro && (x y) (if x (if y y nil) nil))
-(macro || (x y) (if x x (if y y nil)))
-(macro head (@l) take 1 @l)
-(macro tail (@l) drop 1 @l)
-(set id (fun (x) x)
-     rev (fun (@l) (if @l ((rev tail @l) head @l))))
-;     filter (fun (f @l)
-;                 (set h (head @l))
-;                 (if h ((if (f h) h)
-;                        (filter (f) tail @l)))))
-; (fun sort (@nums)
-;   (if nums
-;       (set (h  (head nums)
-;             t  (tail nums)
-;             lt (filter (fun (n) <  n h) t)
-;             ge (filter (fun (n) >= n h) t))
-;            (sort lt) h sort ge)))
+(set id    (macro (x) x)
+     &&    (macro (x y) (if x (if y y nil) nil))
+     ||    (macro (x y) (if x x (if y y nil)))
+     head  (macro (@l) take 1 @l)
+     tail  (macro (@l) drop 1 @l)
+     map   (macro (f @l)
+                  (set h (head @l) t (tail @l))
+                  (f h) (if t (map f t)))
+     foldl (macro (f i @l)
+                  (if @l
+                    ((set h  (head @l)
+                          @t (tail @l)
+                          in (f i h))
+                    (if @t (foldl f in @t) in))
+                    i))
+     grep  (macro (f @l)
+                  (if @l
+                      ((set h (head @l) t (tail @l))
+                       (if (f h) h)
+                       (if t (grep f t)))))
+
+    sort (fun (@nums)
+                (if @nums
+                    ((set h  (head @nums)
+                          t  (tail @nums)
+                          lt (grep (fun (n) <  n h) t)
+                          ge (grep (fun (n) >= n h) t))
+                     (sort lt) h sort ge))))
