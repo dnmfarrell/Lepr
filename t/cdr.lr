@@ -2,6 +2,8 @@
 (print (cdr '(1 2 3)))
 ; expect nil
 (print (cdr '(1)))
+; expect (1)
+(print (cdr '(nil 1)))
 ; expect nil
 (print (cdr '()))
 ; expect nil

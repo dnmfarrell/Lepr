@@ -1,0 +1,14 @@
+; expect 1
+(print 1)
+; expect fun
+(print eq)
+; expect "foo"
+(print "foo")
+; expect nil
+(print nil)
+; expect (1,2)
+(print '(1 2))
+; expect (nil,nil)
+(print '(nil nil))
+; expect 
+(print))
