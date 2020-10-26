@@ -1,0 +1,4 @@
+; expect 1
+(print (and '(5 3 1)))
+; expect nil
+(print (and '(nil 3 1)))

@@ -1,6 +1,0 @@
-; expect 0
-(print len ())
-; expect 3
-(print len (1 2 3))
-; expect 1
-(print len ((print "foo"))) ; lazy

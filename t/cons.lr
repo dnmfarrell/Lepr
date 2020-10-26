@@ -1,0 +1,6 @@
+; expect (1,2,3)
+(print (cons 1 '(2 3)))
+; expect (nil)
+(print (cons nil '()))
+; expect (nil)
+(print (cons nil nil))

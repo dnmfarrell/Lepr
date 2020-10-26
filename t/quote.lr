@@ -1,0 +1,8 @@
+; expect 1
+(print (car '(1 2)))
+; expect 1
+(print (car '(1 2)))
+; expect 1,2
+(print '1 '2)
+; expect 1,2
+(print (quote 1) (quote 2))

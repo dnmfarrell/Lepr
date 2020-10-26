@@ -1,5 +1,5 @@
-; expect 1,2,3
-(print map id (1 2 3))
-(set d (fun (x) * x 2))
-; expect 2,4,6
-(print map d (1 2 3))
+; expect (1,2,3)
+(print (map id '(1 2 3)))
+(set sq (fun (x) (* x 2)))
+; expect (2,4,6)
+(print (map sq '(1 2 3)))

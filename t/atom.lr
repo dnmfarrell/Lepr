@@ -1,0 +1,10 @@
+; expect 1
+(print (atom 1))
+; expect 1
+(print (atom nil))
+; expect nil
+(print (atom '(1)))
+; expect 1
+(print (atom '()))
+; expect 1
+(print (atom atom))

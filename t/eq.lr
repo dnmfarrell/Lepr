@@ -1,0 +1,19 @@
+; expect 1
+(print (eq 1 1))
+; expect 1
+(print (eq "f" "f"))
+; expect 1
+(print (eq nil nil))
+; expect 1
+(print (eq '() nil))
+; expect 1
+(print (eq cdr cdr))
+
+; expect nil
+(print (eq 0 1))
+; expect nil
+(print (eq "b" "f"))
+; expect nil
+(print (eq nil 1))
+; expect nil
+(print (eq cdr atom))

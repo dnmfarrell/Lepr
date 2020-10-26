@@ -1,9 +1,0 @@
-; expect 1
-(print (head (1 2 3)))
-; expect 
-(print (head ()))
-; expect 1
-(print (head (1 (print 2)))) ; lazy
-(set x (1 2 3))
-; expect 1,1
-(print (head x) (head x))

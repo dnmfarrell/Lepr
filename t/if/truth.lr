@@ -1,4 +1,4 @@
-; expect "f"
-(print (if (nil) "t" "f"))
+; expect "t"
+(print (if '(nil) "t" "f"))
 ; expect "f"
 (print (if nil "t" "f"))

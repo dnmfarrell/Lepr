@@ -1,7 +1,7 @@
 ; expect "foobar"
-; expect "savepoint"
-(set  f (fun (x) print x)
+(set  f (fun (x) (print x))
       b f
       c "savepoint")
 (f "foobar")
+; expect "savepoint"
 (b c)

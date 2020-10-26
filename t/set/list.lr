@@ -1,6 +1,6 @@
-; expect 1,2,3,4,5
-; expect 6,7,8
-(set l  (1 2 3 4 5)
-     l2 ((6 7 8))) ; nested, ooh
-(print l)
+(set l1 (quote (1 2 3 4 5))
+     l2 (quote ()))
+; expect (1,2,3,4,5)
+(print l1)
+; expect nil
 (print l2)

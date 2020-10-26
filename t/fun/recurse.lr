@@ -1,5 +1,5 @@
-; expect 1
-; expect 2
 ; expect 3
-(set f (fun (x @l) (print x) (if (tail @l) (f @l))))
-(f 1 2 3 4)
+; expect 2
+; expect 1
+(set f (fun (n) (print n) (set m (- n 1)) (if (> m 0) (f m))))
+(f 3)

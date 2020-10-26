@@ -1,3 +1,0 @@
-; expect "foo"
-(set m (macro (@l) print head @l))
-(m ("foo" (print "bar")))

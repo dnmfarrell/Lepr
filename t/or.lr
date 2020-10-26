@@ -1,0 +1,4 @@
+; expect 5
+(print (or '(5 3 1)))
+; expect 3
+(print (or '(nil 3 1)))

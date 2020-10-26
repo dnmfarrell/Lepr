@@ -1,0 +1,6 @@
+; expect 1
+(print (car '(1 2 3)))
+; expect nil
+(print (car '(nil 2 3)))
+; expect nil
+(print (car nil))

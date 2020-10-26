@@ -1,6 +1,0 @@
-; expect (2,3)
-(print (tail (1 2 3)))
-; expect 
-(print (tail (1)))
-; expect ("bar")
-(print (tail ((print "foo") "bar"))

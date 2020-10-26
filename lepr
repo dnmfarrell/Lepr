@@ -1,38 +1,31 @@
 #!/usr/bin/perl
+package Lepr;
 use Scalar::Util 'looks_like_number';
 use Storable qw(dclone);
 use v5.16;
 use warnings;
 
 our $ENV = {
-  atom  => sub { @_=p(@_);(1 == @_ && defined $_[0]) || undef },
-  print => sub { @_=p(@_);say stringify(@_) },
-  split => sub { @_=p(@_);check_bin_args('split',@_);map \$_,split /${$_[0]}/,${$_[1]}},
-  eq    => sub { @_=p(@_);check_bin_args('eq', @_) && (${$_[0]} eq ${$_[1]} || undef) },
-  join  => sub { @_=p(@_);my $s = shift; \join $$s, map $$_, @_ },
-  '=='  => sub { @_=p(@_);check_num_args('==', @_) && ($_[0] == $_[1] || undef) },
-  '>='  => sub { @_=p(@_);check_num_args('>=', @_) && ($_[0] >= $_[1] || undef) },
-  '<='  => sub { @_=p(@_);check_num_args('<=', @_) && ($_[0] <= $_[1] || undef) },
-  '>'   => sub { @_=p(@_);check_num_args('>',  @_) && ($_[0] >  $_[1] || undef) },
-  '<'   => sub { @_=p(@_);check_num_args('<',  @_) && ($_[0] <  $_[1] || undef) },
-  '+'   => sub { @_=p(@_);check_num_args('+',  @_) && $_[0] +  $_[1] },
-  '-'   => sub { @_=p(@_);check_num_args('-',  @_) && $_[0] -  $_[1] },
-  '/'   => sub { @_=p(@_);check_num_args('/',  @_) && $_[0] /  $_[1] },
-  '*'   => sub { @_=p(@_);check_num_args('*',  @_) && $_[0] *  $_[1] },
-  '^'   => sub { @_=p(@_);check_num_args('^',  @_) && $_[0] ** $_[1] },
-  '%'   => sub { @_=p(@_);check_num_args('%',  @_) && $_[0] %  $_[1] },
-};
-run(join ' ', <DATA>, <>);
-
-sub p { evaluate($_[1], $_[0]) }
-sub check_bin_args {
-  die sprintf "'%s' needs 2 args but got %d\n", $_[0], @_ - 1 unless @_ == 3}
-
-sub check_num_args {
-  check_bin_args(@_);
-  die sprintf "'%s' operates on nums but got (%s)\n", $_[0],
-    join ',', map { stringify($_) } @_[1..$#_]
-    unless @_ - 1 == grep { looks_like_number($_) } @_[1..$#_] }
+  print => sub { say stringify(@_); () }, # no return value
+  atom  => sub { atom(@_) ? 1 : undef },
+  cons  => sub { my $v=check_args('cons',['h','@l'],@_);
+                 [$v->{h}, @{$v->{'@l'} // []}] },
+  car   => sub { check_args('car',['@l'],@_); nil($_[0]) ? undef : $_[0]->[0]},
+  cdr   => sub { my $v=check_args('car',['@l'],@_)->{'@l'};
+                 $v && @$v > 1 ? [@$v[1..$#$v]] : undef },
+  eq    => sub { equal(@_) ? 1 : undef },
+  '++'  => sub { check_args('++',['@l','@m'],@_);[@{$_[0]//[]},@{$_[1]//[]}] },
+  '=='  => sub { check_num_args('==', @_) && ($_[0] == $_[1] || undef) },
+  '>='  => sub { check_num_args('>=', @_) && ($_[0] >= $_[1] || undef) },
+  '<='  => sub { check_num_args('<=', @_) && ($_[0] <= $_[1] || undef) },
+  '>'   => sub { check_num_args('>',  @_) && ($_[0] >  $_[1] || undef) },
+  '<'   => sub { check_num_args('<',  @_) && ($_[0] <  $_[1] || undef) },
+  '+'   => sub { check_num_args('+',  @_) && $_[0] +  $_[1] },
+  '-'   => sub { check_num_args('-',  @_) && $_[0] -  $_[1] },
+  '/'   => sub { check_num_args('/',  @_) && $_[0] /  $_[1] },
+  '*'   => sub { check_num_args('*',  @_) && $_[0] *  $_[1] },
+  '^'   => sub { check_num_args('^',  @_) && $_[0] ** $_[1] },
+  '%'   => sub { check_num_args('%',  @_) && $_[0] %  $_[1] }};
 
 sub tokenize {
   my @chars = split //, shift;
@@ -60,163 +53,119 @@ sub parse {
   elsif ($t eq 'nil')              { undef, parse(@_) }
   else                             { $t, parse(@_) }}
 
+sub expand {
+  return unless @{$_[0]};
+  my $n = shift @{$_[0]};
+  if    (aref($n))            { [ expand($n) ], expand(@_) }
+  elsif ($n && $n eq "'")     { ['quote', shift @{$_[0]}], expand(@_) }
+  else                        { $n, expand(@_) }}
+
+sub aref { ref $_[0] eq 'ARRAY' }
+sub nil  { !defined $_[0] || aref(@_) && @{$_[0]} == 0 }
+sub atom { nil(@_) || !aref(@_) }
+sub list { nil(@_) || aref(@_) }
+sub num  { looks_like_number($_[0]) }
+sub str  { ref $_[0] eq 'SCALAR' }
+sub fun  { ref $_[0] eq 'CODE' }
+
+sub equal {
+  my ($x, $y) = @_;
+  if    (nil($x))            { nil($y) }
+  elsif (num($x) && num($y)) { $x == $y }
+  elsif (str($x) && str($y)) { $$x eq $$y }
+  else                       { "$x" eq "$y" }} # stringified memory location
+
 sub evaluate {
   my ($expr, $env) = @_;
-  return () unless @$expr;
-
-  my $op = shift @$expr;
-  if (!defined $op) {
-    $op, evaluate($expr, $env);
-  } elsif ($op eq "'") {
-    my $symbol = shift @$expr;
-    die "Symbol '$symbol' is undefined\n" unless exist($symbol, $env);
-    find($symbol, $env), evaluate($expr, $env);
-  } elsif (ref $op eq 'SCALAR') {
-    $op, evaluate($expr, $env);
-  } elsif (ref $op eq 'ARRAY') {
-    evaluate($op, $env), evaluate($expr, $env);
-  } elsif ($op eq 'macro') {
-    macro($expr);
-  } elsif ($op eq 'len') { # does not eval elements
-    my $list = expand(shift @$expr, $env);
-    if (ref $list eq 'ARRAY') {
-      scalar @$list;
-    } else {
-      die "'len' needs a list got: '%s'\n", stringify($list);
-    }
-  } elsif ($op eq 'take') { # only eval the taken elements
-    my $n = expand(shift @$expr, $env);
-    die sprintf "'take' needs a num as its 1st arg: got '%s'\n", stringify($n)
-      unless looks_like_number($n) && $n > 0;
-
-    my $list = expand(shift @$expr, $env);
-    if (ref $list eq 'ARRAY') {
-      my $len = @$list;
-      if ($len == 0) {
-        ();
-      } elsif ($len < $n) {
-        evaluate([@{$list}[0..$#$list]], $env);
-      } else {
-        evaluate([@{$list}[0..--$n]], $env);
-      }
-    } else {
-      die "'take' needs a list as its 2nd arg: got '%s'\n", stringify($list);
-    }
-  } elsif ($op eq 'drop') { # only eval the remaining elements
-    my $n = expand(shift @$expr, $env);
-    die sprintf "'drop' needs a num as its 1st arg: got '%s'\n", stringify($n)
-      unless looks_like_number($n) && $n > 0;
-
-    my $list = expand(shift @$expr, $env);
-    if (ref $list eq 'ARRAY') {
-      my $len = @$list;
-      if ($len <= $n) {
-        ();
-      } elsif ($len - $n == 1) {
-        # don't expand the list into a scalar
-        [evaluate([@{$list}[$n..$#$list]], $env)];
-      } else {
-        [evaluate([@{$list}[$n..$#$list]], $env)];
-      }
-    } else {
-      die "'drop' needs a list as its 2nd arg: got '%s'\n", stringify($list);
-    }
-  } elsif ($op eq 'fun') {
-    fun($expr, $env);
-  } elsif ($op eq 'if') {
-    die sprintf "'if' needs 2 or 3 args but got %d\n", scalar @$expr
-      unless @$expr >= 2 && @$expr <= 3;
-    my ($cond, $then) = splice @$expr, 0, 2;
-    ($cond) = evaluate([$cond], $env); # always eval in list context
-    if (true($cond)) { evaluate([$then], $env) }
-    elsif (@$expr) { evaluate([shift @$expr], $env) }
-    else { () }
-  } elsif ($op eq 'set') {
-    die "'set' needs a list of pairs\n" unless @$expr;
-    die "'set' needs an even number of keys & values\n" if @$expr % 2;
-    while (my $k = shift @$expr) {
-      die "Symbol '$k' is already set\n" if exists $env->{$k};
-      my @v = evaluate([shift @$expr], $env);
-      $env->{$k} = @v > 1 ? \@v : $v[0];
-    }
-    ();
-  } elsif (looks_like_number($op)) {
-    $op, evaluate($expr, $env);
+  if (nil($expr)) {
+    undef; # collapse () and nil into one value
+  } elsif (num($expr) || str($expr) || fun($expr)) {
+    $expr;
+  } elsif (!list($expr)) { # a symbol
+    die "Symbol '$expr' is undefined\n" unless exist($expr, $env);
+    find($expr, $env);
   } else {
-    die "Symbol '$op' is undefined\n" unless exist($op, $env);
-    my $symbol = find($op, $env);
-    if (my $reftype = ref $symbol) {
-      if ($reftype eq 'CODE') {
-        @$expr ? $symbol->($env, $expr) : $symbol;
-      } elsif ($reftype eq 'ARRAY') {
-        evaluate($symbol, $env), evaluate($expr, $env);
-      } else {
-        $symbol, evaluate($expr, $env);
+    my $func = shift @$expr;
+    if ($func eq 'fun') {
+      new_fun($expr, $env);
+    } elsif ($func eq 'quote') {
+      @$expr;
+    } elsif ($func eq 'if') {
+      die sprintf "'if' needs 2 or 3 args but got %d\n", scalar @$expr
+        unless @$expr >= 2 && @$expr <= 3;
+      my ($cond, $then) = splice @$expr, 0, 2;
+      ($cond) = evaluate($cond, $env); # always eval in list context
+      if (!nil($cond)) { evaluate($then, $env) }
+      elsif (@$expr) { evaluate(shift @$expr, $env) }
+      else { () }
+    } elsif ($func eq 'set') {
+      die "'set' needs an even number of key/value pairs\n" if @$expr % 2;
+      while (my $k = shift @$expr) {
+        die "Symbol '$k' is already set\n" if exists $env->{$k};
+        my @v = evaluate(shift @$expr, $env); # always eval in list context
+        die "'set' evaluated '$k' to multiple values\n" if @v > 1;
+        die "'set' evaluated '$k' to nothing!\n" if @v == 0;
+        $env->{$k} = $v[0];
       }
+      (); # set returns nothing
     } else {
-      $symbol, evaluate($expr, $env);
-    }
-  }}
-
-sub true { defined $_[0] && (ref $_[0] ne 'ARRAY' || @{$_[0]}) }
-
-sub expand {
-  my ($s, $env) = @_;
-  if (ref $s eq 'ARRAY') { [ map { expand($_, $env) } @$s ] }
-  else { exist($s, $env) ? find($s, $env) : $s }}
-
-sub macro {
-  my ($expr) = @_;
-  my $params = shift @$expr;
-  die "'macro' needs a params list\n" unless $params && ref $params eq 'ARRAY' && @$params;
-  die "'macro' needs a body\n" unless @$expr;
-  sub {
-    my ($env, $args, %scope) = @_;
-    my @expand = map { expand($_, $env) } @$args;
-    for my $p (@$params) {
-      if (substr($p, 0, 1) eq '@') { # a list param
-        die sprintf "param '$p' must be a list but got: '%s'\n", stringify($expand[0])
-          unless ref $expand[0] eq 'ARRAY';
-        $scope{$p} = shift @expand;
+      die "Function '$func' is undefined\n" unless exist($func, $env);
+      my $value = find($func, $env);
+      if (fun($value)) {
+        $value->(map { evaluate($_, $env) } @$expr);
       } else {
-        die "Missing arg for macro param '$p'\n" unless @expand;
-        $scope{$p} = shift @expand;
-      }
-    }
-    die sprintf "Excess args (%s) passed to macro\n",
-      join ',', map { stringify($_) } @expand if @expand;
-    $scope{OUTER} = $env;
-    evaluate(dclone($expr), \%scope);
-  }}
+        die sprintf "Invalid expr; expected a function name but got: '%s'\n",
+          stringify($value)}}}}
 
-sub fun {
+sub new_fun {
   my ($expr, $env) = @_;
   my $params = shift @$expr; # no evaluation of fun signatures
-  die "'fun' needs a params list\n" unless $params && ref $params eq 'ARRAY' && @$params;
-  die "'fun' needs a body\n" unless @$expr;
+  die "anonymous 'fun' declaration needs a params list\n"
+    unless aref($params) && @$params;
+  die "anonymous 'fun' declaration needs a body\n" unless @$expr;
   sub {
-    my (@args, %scope) = evaluate($_[1], $_[0]);
-    for my $p (@$params) {
-      if (substr($p, 0, 1) eq '@') { # a list param, empty list acceptable
-        $scope{$p} = [splice @args];
-      } else {
-        die "Missing arg for function param '$p'\n" unless @args;
-        $scope{$p} = shift @args;
-      }
+    my $scope = check_args('anon', $params, @_);
+    $scope->{OUTER} = $env;
+    my $body = safeclone($expr);
+    map { evaluate($_, $scope) } @$body}}
+
+sub check_args {
+  my ($name, $params, @args, %scope) = @_;
+  for my $p (@$params) {
+    die "Missing arg for the $name function param '$p'\n" unless @args;
+    my $v = shift @args;
+    if (substr($p, 0, 1) eq '@') {
+      die sprintf "Fun $name param '$p' didn't get a list type: '%s'\n",
+        stringify($v) if !list($v);
+    } else {
+      die sprintf "Fun $name param '$p' didn't get an atom type: '%s'\n",
+        stringify($v) if !atom($v);
     }
-    die sprintf "Excess args (%s) passed to function\n",
-      join ',', map { stringify($_) } @args if @args;
-    $scope{OUTER} = $env;
-    evaluate(dclone($expr), \%scope);
-  }}
+    $scope{$p} = $v;
+  }
+  die sprintf "Excess args (%s) passed to $name function\n",
+    join ',', map { stringify($_) } @args if @args;
+  \%scope}
+
+sub check_num_args {
+  check_args($_[0], ['x','y'], @_[1..$#_]);
+  die sprintf "'%s' operates on nums but got (%s)\n", $_[0],
+    join ',', map { stringify($_) } @_[1..$#_]
+    unless @_ - 1 == grep { looks_like_number($_) } @_[1..$#_] }
 
 sub stringify {
   join ',', map {
-    my $reftype = ref $_;
-    if ($reftype eq 'CODE') { 'fun' }
-    elsif ($reftype eq 'SCALAR') { "\"$$_\"" }
-    elsif ($reftype eq 'ARRAY') { sprintf '(%s)', join ',', map { stringify($_) } @$_ }
-    else { $_ // 'nil' }} @_ }
+    if    (nil($_))  { 'nil' }
+    elsif (str($_))  { "\"$$_\"" }
+    elsif (num($_))  { $_ }
+    elsif (fun($_))  { 'fun' }
+    elsif (list($_)) { sprintf '(%s)', join ',', map { stringify($_) } @$_ }
+    else             { die "Can't stringify $_" } } @_ }
+
+sub exist {
+  my ($k, $env) = @_;
+  if    ($k && exists $env->{$k})   { 1 }
+  elsif (my $outer = $env->{OUTER}) { exist($k, $outer) }}
 
 sub find {
   my ($k, $env) = @_;
@@ -225,48 +174,38 @@ sub find {
 
 sub safeclone {
   my $v = shift;
-  my $reftype = ref $v;
-  if ($reftype eq 'ARRAY') {[ map { safeclone($_) } @$v ] }
-  elsif ($reftype eq 'CODE' || !$reftype) { $v }
-  else { dclone($v) }
-}
-
-sub exist {
-  my ($k, $env) = @_;
-  if    ($k && exists $env->{$k})   { 1 }
-  elsif (my $outer = $env->{OUTER}) { exist($k, $outer) }}
+  if    (aref($v))           { [ map { safeclone($_) } @$v ] }
+  elsif (fun($v) || !ref $v) { $v }
+  else                       { dclone($v) }}
 
 sub run {
-  my ($code) = @_;
+  my ($self, $env, $code) = @_;
   my $tokens = tokenize($code);
   my @ast = parse([@$tokens]);
-  evaluate(\@ast, $ENV)}
-__DATA__
-(set id    (macro (x) x)
-     &&    (macro (x y) (if x (if y y nil) nil))
-     ||    (macro (x y) (if x x (if y y nil)))
-     head  (macro (@l) take 1 @l)
-     tail  (macro (@l) drop 1 @l)
-     map   (macro (f @l)
-                  (set h (head @l) t (tail @l))
-                  (f h) (if t (map f t)))
-     foldl (macro (f i @l)
-                  (if @l
-                    ((set h  (head @l)
-                          @t (tail @l)
-                          in (f i h))
-                    (if @t (foldl f in @t) in))
-                    i))
-     grep  (macro (f @l)
-                  (if @l
-                      ((set h (head @l) t (tail @l))
-                       (if (f h) h)
-                       (if t (grep f t)))))
+  my @expanded = map { [expand($_)] } @ast;
+  evaluate($_, $env) for @expanded}
 
-    sort (fun (@nums)
-                (if @nums
-                    ((set h  (head @nums)
-                          t  (tail @nums)
-                          lt (grep (fun (n) <  n h) t)
-                          ge (grep (fun (n) >= n h) t))
-                     (sort lt) h sort ge))))
+__PACKAGE__->run($ENV, join ' ', <DATA>, <>) unless caller;
+__DATA__
+(set id    (fun (x) x)
+     &&    (fun (x y) (if x y nil))
+     ||    (fun (x y) (if x x y))
+     map   (fun (f @l)
+                (set h (car @l) t (cdr @l))
+                (cons (f h) (if t (map f t) '())))
+     grep  (fun (f @l)
+                 (set h (car @l) t (cdr @l))
+                 (++ (if (f h) (cons h '()) nil)
+                     (if t (grep f t) nil)))
+     sort  (fun (@nums)
+                (set h (car @nums)
+                     t (cdr @nums)
+                     lt (if t (grep (fun (n) (<  n h)) t) nil)
+                     ge (if t (grep (fun (n) (>= n h)) t) nil))
+                (if @nums (++ (sort lt) (cons h (sort ge))) nil))
+     foldl (fun (f i @l)
+                (set h (car @l) t (cdr @l))
+                (if @l (foldl f (f i h) t) i))
+     and   (fun (@l) (foldl && 1 @l))
+     or    (fun (@l) (foldl || nil @l)))
+
