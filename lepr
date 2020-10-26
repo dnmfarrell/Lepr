@@ -114,8 +114,8 @@ sub evaluate {
       if (fun($value)) {
         $value->(map { evaluate($_, $env) } @$expr);
       } else {
-        die sprintf "Invalid expr; expected a function name but got: '%s'\n",
-          stringify($value)}}}}
+        die sprintf "Expected a function but '%s' resolves to '%s'\n",
+          $func, stringify($value)}}}}
 
 sub new_fun {
   my ($expr, $env) = @_;
