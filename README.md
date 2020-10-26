@@ -1,89 +1,109 @@
 Lepr
 ====
-"Leper" is a tiny Lisp-like written in Perl. It supports lambdas, macros, conditional execution and more features are on the way. Unlike regular lisps, Lepr auto-expands lists reducing the need for parens and lazily evaluates expressions. Part of this experiment is to find out if those features lead to a pleasant programming experience.
+"Leper" is a tiny Lisp-like written in Perl. It supports lambdas, conditional execution and quoting.
 
-    ./lepr '(print "Hello, World!")'
-    Hello, World!
+Function parameters use `@` to denote a list parameter, which is type-checked at run time. Lepr uses functional scoping rules.
+
+Lepr is mostly "pure"; `set` and `print` are the only forms which don't return a value. Looping is done via recursion, symbols once defined cannot be re-defined.
 
 Peter Norvig's article on [Lispy](https://norvig.com/lispy.html) inspired me, I hope it inspires you too.
 
+Running Lepr
+------------
+    echo '(print "Hello, World!")' | ./lepr
+    Hello, World!
+
+    ./lepr t/hello.lr
+    Hello, World!
+
+Types
+-----
+  * functions
+  * lists
+  * nums
+  * strings
+  * nil
+
+Logic
+-----
+The only false value is `nil` all other values are true. `nil` is equal to an empty list, so it is both an atom and a list.
+
+Macros
+------
+Currently only supports the quote operator `'` which is expanded into the `quote` keyword.
+
 Keywords
 --------
-    (call fun-name args*)
-    (fun [name] (params) body+)
+    (fun (params) form+)
     (if cond then [else])
-    (macro name (params) body+)
-    (set ((key value)*) body+)
+    (set {key value}+))
+    (quote form+))
 
 Built-in Functions
 ------------------
-    atom
-    print
-    split
-    eq
-    head
-    join
-    tail
-    map
-    nil
-    ==
-    >=
-    <=
-    >
-    <
-    +
-    -
-    /
-    *
-    ^
-    %
+    print *
+    atom (x)
+    cons (x @l)
+    car  (@l)
+    cdr  (@l)
+    eq   (* *)
+    ++   (@l @m)
+
+N.b. these satisfy the Lisp 1.5 elementary functions from the [LISP 1.5 Programmer's Manual](https://mitpress.mit.edu/books/lisp-15-programmers-manual).
+
+Binary numerical functions:
+
+    ==   (x y)
+    >=   (x y)
+    <=   (x y)
+    >    (x y)
+    <    (x y)
+    +    (x y)
+    -    (x y)
+    /    (x y)
+    *    (x y)
+    ^    (x y)
+    %    (x y)
 
 Examples
 --------
-### && (predicate, lazy)
-    (macro && (x y) if x (if y y nil) nil)
+These come from Lepr's std library:
 
-### || (predicate, lazy)
-    (macro || (x y) if x x (if y y nil))
+    (set id    (fun (x) x)
+         &&    (fun (x y) (if x y nil))
+         ||    (fun (x y) (if x x y))
+         map   (fun (f @l)
+                    (set h (car @l) t (cdr @l))
+                    (cons (f h) (if t (map f t) '())))
+         grep  (fun (f @l)
+                     (set h (car @l) t (cdr @l))
+                     (++ (if (f h) (cons h '()) nil)
+                         (if t (grep f t) nil)))
+         sort  (fun (@nums)
+                    (set h (car @nums)
+                         t (cdr @nums)
+                         lt (if t (grep (fun (n) (<  n h)) t) nil)
+                         ge (if t (grep (fun (n) (>= n h)) t) nil))
+                    (if @nums (++ (sort lt) (cons h (sort ge))) nil))
+         foldl (fun (f i @l)
+                    (set h (car @l) t (cdr @l))
+                    (if @l (foldl f (f i h) t) i))
+         and   (fun (@l) (foldl && 1 @l))
+         or    (fun (@l) (foldl || nil @l)))
 
-### Drop
-    (fun drop (x @l)
-      (if (> x 0) (drop (- x 1) tail l) l))
+Tests
+-----
+Run the test suite:
 
-    (drop 2 (1 2 3 4 5))
+    $ t/run-tests.t
 
-### Filter
-    (fun filter (f @l)
-      (if l (set (h (head l))
-                 (if (f h) h) filter (f) tail l)))
+Dependencies
+------------
+Perl 5.16 or higher.
 
-### Identity
-    (fun id (x) x)
-
-    (id 5)
-
-### Reverse
-    (fun rev (@l)
-      (if l ((rev tail l) head l)))
-
-    (rev "!" "World" ", " "Hello")
-
-### Sort (quicksort)
-    (fun sort (@nums)
-      (if nums
-          (set (h  (head nums)
-                t  (tail nums)
-                lt (grep (fun (n) <  n h) t)
-                ge (grep (fun (n) >= n h) t))
-               (sort lt) h sort ge)))
-
-    (sort 2 1 5 3 1)
-
-### Take
-    (fun take (x @l)
-      (if (> x 0) ((head l) take (- x 1) tail l)))
-
-    (take 3 (1 2 4 7 9 10))
+Install
+-------
+Save the `lepr` file somewhere in your PATH.
 
 License
 -------
