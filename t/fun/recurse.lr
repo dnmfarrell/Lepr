@@ -1,5 +1,7 @@
 ; expect 3
 ; expect 2
 ; expect 1
-(set f (fun (n) (print n) (set m (- n 1)) (if (> m 0) (f m))))
+(set f (fun (n)
+       (set m (- n 1))
+       (if (>= m 0) (or (print n) (f m)) nil)))
 (f 3)

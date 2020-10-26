@@ -91,13 +91,11 @@ sub evaluate {
     } elsif ($func eq 'quote') {
       @$expr;
     } elsif ($func eq 'if') {
-      die sprintf "'if' needs 2 or 3 args but got %d\n", scalar @$expr
-        unless @$expr >= 2 && @$expr <= 3;
+      die sprintf "'if' needs 3 args but got %d\n", 0 + @$expr if @$expr != 3;
       my ($cond, $then) = splice @$expr, 0, 2;
       ($cond) = evaluate($cond, $env); # always eval in list context
       if (!nil($cond)) { evaluate($then, $env) }
-      elsif (@$expr) { evaluate(shift @$expr, $env) }
-      else { () }
+      else { evaluate(shift @$expr, $env) }
     } elsif ($func eq 'set') {
       die "'set' needs an even number of key/value pairs\n" if @$expr % 2;
       while (my $k = shift @$expr) {
