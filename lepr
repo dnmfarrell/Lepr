@@ -7,25 +7,23 @@ use warnings;
 
 our $ENV = {
   print => sub { say stringify(@_); () }, # no return value
-  atom  => sub { check_args('atom',['x'], @_); atom(@_) ? 1 : undef },
-  cons  => sub { my $v=check_args('cons',['h','@l'],@_);
-                 [$v->{h}, @{$v->{'l'} // []}] },
-  car   => sub { check_args('car',['@l'],@_); nil($_[0]) ? undef : $_[0]->[0]},
-  cdr   => sub { my $v=check_args('car',['@l'],@_)->{'l'};
-                 $v && @$v > 1 ? [@$v[1..$#$v]] : undef },
-  eq    => sub { check_args('eq',['x','y'],@_); equal(@_) ? 1 : undef },
-  '++'  => sub { check_args('++',['@l','@m'],@_);[@{$_[0]//[]},@{$_[1]//[]}] },
-  '=='  => sub { check_args('==',['#x','#y'],@_) && ($_[0] == $_[1] || undef)},
-  '>='  => sub { check_args('>=',['#x','#y'],@_) && ($_[0] >= $_[1] || undef)},
-  '<='  => sub { check_args('<=',['#x','#y'],@_) && ($_[0] <= $_[1] || undef)},
-  '>'   => sub { check_args('>', ['#x','#y'],@_) && ($_[0] >  $_[1] || undef)},
-  '<'   => sub { check_args('<', ['#x','#y'],@_) && ($_[0] <  $_[1] || undef)},
-  '+'   => sub { check_args('+', ['#x','#y'],@_) && $_[0] +  $_[1] },
-  '-'   => sub { check_args('-', ['#x','#y'],@_) && $_[0] -  $_[1] },
-  '/'   => sub { check_args('/', ['#x','#y'],@_) && $_[0] /  $_[1] },
-  '*'   => sub { check_args('*', ['#x','#y'],@_) && $_[0] *  $_[1] },
-  '^'   => sub { check_args('^', ['#x','#y'],@_) && $_[0] ** $_[1] },
-  '%'   => sub { check_args('%', ['#x','#y'],@_) && $_[0] %  $_[1] }};
+  atom  => new_prim('atom', ['x'], sub { atom($_[0]->{x}) ? 1 : undef }),
+  cons  => new_prim('cons', ['h','@l'],sub {[$_[0]->{h}, @{$_[0]->{l} // []}]}),
+  car   => new_prim('car',['@l'],sub{ nil($_[0]->{l}) ? undef : $_[0]->{l}[0]}),
+  cdr   => new_prim('car',['@l'],sub{my $l=shift->{l};$l && @$l > 1 ? [@$l[1..$#$l]] : undef }),
+  eq    => new_prim('eq',['x','y'],  sub {equal($_[0]->{x},$_[0]->{y}) ? 1 : undef}),
+  '++'  => new_prim('++',['@l','@m'],sub {[@{$_[0]->{l}//[]},@{$_[0]->{m}//[]}] }),
+  '=='  => new_prim('==',['#x','#y'],sub {($_[0]->{x} == $_[0]->{y} || undef)}),
+  '>='  => new_prim('>=',['#x','#y'],sub {($_[0]->{x} >= $_[0]->{y} || undef)}),
+  '<='  => new_prim('<=',['#x','#y'],sub {($_[0]->{x} <= $_[0]->{y} || undef)}),
+  '>'   => new_prim('>', ['#x','#y'],sub {($_[0]->{x} >  $_[0]->{y} || undef)}),
+  '<'   => new_prim('<', ['#x','#y'],sub {($_[0]->{x} <  $_[0]->{y} || undef)}),
+  '+'   => new_prim('+', ['#x','#y'],sub {$_[0]->{x} +  $_[0]->{y} }),
+  '-'   => new_prim('-', ['#x','#y'],sub {$_[0]->{x} -  $_[0]->{y} }),
+  '/'   => new_prim('/', ['#x','#y'],sub {$_[0]->{x} /  $_[0]->{y} }),
+  '*'   => new_prim('*', ['#x','#y'],sub {$_[0]->{x} *  $_[0]->{y} }),
+  '^'   => new_prim('^', ['#x','#y'],sub {$_[0]->{x} ** $_[0]->{y} }),
+  '%'   => new_prim('%', ['#x','#y'],sub {$_[0]->{x} %  $_[0]->{y} })};
 
 sub tokenize {
   my @chars = split //, shift;
@@ -126,6 +124,10 @@ sub new_fun {
     $scope->{OUTER} = $env;
     my $body = safeclone($expr);
     map { evaluate($_, $scope) } @$body}}
+
+sub new_prim {
+  my ($name, $params, $sub) = @_;
+  sub { my $scope = check_args($name, $params, @_); $sub->($scope) }}
 
 sub check_args {
   my ($name, $params, @args, %scope) = @_;
