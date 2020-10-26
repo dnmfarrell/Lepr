@@ -6,24 +6,24 @@ use v5.16;
 use warnings;
 
 our $ENV = {
-  print => sub { say stringify(@_); () }, # no return value
-  atom  => new_prim('atom', ['x'], sub { atom($_[0]->{x}) ? 1 : undef }),
-  cons  => new_prim('cons', ['h','@l'],sub {[$_[0]->{h}, @{$_[0]->{l} // []}]}),
-  car   => new_prim('car',['@l'],sub{ nil($_[0]->{l}) ? undef : $_[0]->{l}[0]}),
-  cdr   => new_prim('car',['@l'],sub{my $l=shift->{l};$l && @$l > 1 ? [@$l[1..$#$l]] : undef }),
-  eq    => new_prim('eq',['x','y'],  sub {equal($_[0]->{x},$_[0]->{y}) ? 1 : undef}),
-  '++'  => new_prim('++',['@l','@m'],sub {[@{$_[0]->{l}//[]},@{$_[0]->{m}//[]}] }),
-  '=='  => new_prim('==',['#x','#y'],sub {($_[0]->{x} == $_[0]->{y} || undef)}),
-  '>='  => new_prim('>=',['#x','#y'],sub {($_[0]->{x} >= $_[0]->{y} || undef)}),
-  '<='  => new_prim('<=',['#x','#y'],sub {($_[0]->{x} <= $_[0]->{y} || undef)}),
-  '>'   => new_prim('>', ['#x','#y'],sub {($_[0]->{x} >  $_[0]->{y} || undef)}),
-  '<'   => new_prim('<', ['#x','#y'],sub {($_[0]->{x} <  $_[0]->{y} || undef)}),
-  '+'   => new_prim('+', ['#x','#y'],sub {$_[0]->{x} +  $_[0]->{y} }),
-  '-'   => new_prim('-', ['#x','#y'],sub {$_[0]->{x} -  $_[0]->{y} }),
-  '/'   => new_prim('/', ['#x','#y'],sub {$_[0]->{x} /  $_[0]->{y} }),
-  '*'   => new_prim('*', ['#x','#y'],sub {$_[0]->{x} *  $_[0]->{y} }),
-  '^'   => new_prim('^', ['#x','#y'],sub {$_[0]->{x} ** $_[0]->{y} }),
-  '%'   => new_prim('%', ['#x','#y'],sub {$_[0]->{x} %  $_[0]->{y} })};
+  print => sub { say stringify(@_[1..$#_]); () }, # no return value
+  atom  => new_prim(['x'], sub { atom($_[0]->{x}) ? 1 : undef }),
+  cons  => new_prim(['h','@l'],sub {[$_[0]->{h}, @{$_[0]->{l} // []}]}),
+  car   => new_prim(['@l'],sub{ nil($_[0]->{l}) ? undef : $_[0]->{l}[0]}),
+  cdr   => new_prim(['@l'],sub{my $l=shift->{l};$l && @$l > 1 ? [@$l[1..$#$l]] : undef }),
+  eq    => new_prim(['x','y'],  sub {equal($_[0]->{x},$_[0]->{y}) ? 1 : undef}),
+  '++'  => new_prim(['@l','@m'],sub {[@{$_[0]->{l}//[]},@{$_[0]->{m}//[]}] }),
+  '=='  => new_prim(['#x','#y'],sub {($_[0]->{x} == $_[0]->{y} || undef)}),
+  '>='  => new_prim(['#x','#y'],sub {($_[0]->{x} >= $_[0]->{y} || undef)}),
+  '<='  => new_prim(['#x','#y'],sub {($_[0]->{x} <= $_[0]->{y} || undef)}),
+  '>'   => new_prim(['#x','#y'],sub {($_[0]->{x} >  $_[0]->{y} || undef)}),
+  '<'   => new_prim(['#x','#y'],sub {($_[0]->{x} <  $_[0]->{y} || undef)}),
+  '+'   => new_prim(['#x','#y'],sub {$_[0]->{x} +  $_[0]->{y} }),
+  '-'   => new_prim(['#x','#y'],sub {$_[0]->{x} -  $_[0]->{y} }),
+  '/'   => new_prim(['#x','#y'],sub {$_[0]->{x} /  $_[0]->{y} }),
+  '*'   => new_prim(['#x','#y'],sub {$_[0]->{x} *  $_[0]->{y} }),
+  '^'   => new_prim(['#x','#y'],sub {$_[0]->{x} ** $_[0]->{y} }),
+  '%'   => new_prim(['#x','#y'],sub {$_[0]->{x} %  $_[0]->{y} })};
 
 sub tokenize {
   my @chars = split //, shift;
@@ -108,7 +108,7 @@ sub evaluate {
       die "Function '$func' is undefined\n" unless exist($func, $env);
       my $value = find($func, $env);
       if (fun($value)) {
-        $value->(map { evaluate($_, $env) } @$expr);
+        $value->($func, map { evaluate($_, $env) } @$expr);
       } else {
         die sprintf "Expected a function but '%s' resolves to '%s'\n",
           $func, stringify($value)}}}}
@@ -116,18 +116,18 @@ sub evaluate {
 sub new_fun {
   my ($expr, $env) = @_;
   my $params = shift @$expr; # no evaluation of fun signatures
-  die "anonymous 'fun' declaration needs a params list\n"
+  die "'fun' declaration needs a params list\n"
     unless aref($params) && @$params;
-  die "anonymous 'fun' declaration needs a body\n" unless @$expr;
+  die "'fun' declaration needs a body\n" unless @$expr;
   sub {
-    my $scope = check_args('anon', $params, @_);
+    my $scope = check_args(shift, $params, @_);
     $scope->{OUTER} = $env;
     my $body = safeclone($expr);
     map { evaluate($_, $scope) } @$body}}
 
 sub new_prim {
-  my ($name, $params, $sub) = @_;
-  sub { my $scope = check_args($name, $params, @_); $sub->($scope) }}
+  my ($params, $sub) = @_;
+  sub { my $scope = check_args(shift, $params, @_); $sub->($scope) }}
 
 sub check_args {
   my ($name, $params, @args, %scope) = @_;
@@ -136,16 +136,16 @@ sub check_args {
     my $v = shift @args;
     my ($lead, $np) = (substr($p, 0, 1), substr($p, 1));
     if ($lead eq '@') {
-      die sprintf "Fun $name param '$p' didn't get a list type: '%s'\n",
+      die sprintf "'$name' param '$p' didn't get a list type: '%s'\n",
         stringify($v) if !list($v);
     } elsif ($lead eq '&') {
-      die sprintf "Fun $name param '$p' didn't get an function type: '%s'\n",
+      die sprintf "'$name' param '$p' didn't get an function type: '%s'\n",
         stringify($v) if !fun($v);
     } elsif ($lead eq '#') {
-      die sprintf "Fun $name param '$p' didn't get a number type: '%s'\n",
+      die sprintf "'$name' param '$p' didn't get a number type: '%s'\n",
         stringify($v) if !num($v);
     } elsif ($lead eq '*') {
-      die sprintf "Fun $name param '$p' didn't get an atom type: '%s'\n",
+      die sprintf "'$name' param '$p' didn't get an atom type: '%s'\n",
         stringify($v) if !atom($v);
     } else {
       $np = $p;
