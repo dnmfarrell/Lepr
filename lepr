@@ -7,25 +7,25 @@ use warnings;
 
 our $ENV = {
   print => sub { say stringify(@_); () }, # no return value
-  atom  => sub { atom(@_) ? 1 : undef },
+  atom  => sub { check_args('atom',['x'], @_); atom(@_) ? 1 : undef },
   cons  => sub { my $v=check_args('cons',['h','@l'],@_);
-                 [$v->{h}, @{$v->{'@l'} // []}] },
+                 [$v->{h}, @{$v->{'l'} // []}] },
   car   => sub { check_args('car',['@l'],@_); nil($_[0]) ? undef : $_[0]->[0]},
-  cdr   => sub { my $v=check_args('car',['@l'],@_)->{'@l'};
+  cdr   => sub { my $v=check_args('car',['@l'],@_)->{'l'};
                  $v && @$v > 1 ? [@$v[1..$#$v]] : undef },
-  eq    => sub { equal(@_) ? 1 : undef },
+  eq    => sub { check_args('eq',['x','y'],@_); equal(@_) ? 1 : undef },
   '++'  => sub { check_args('++',['@l','@m'],@_);[@{$_[0]//[]},@{$_[1]//[]}] },
-  '=='  => sub { check_num_args('==', @_) && ($_[0] == $_[1] || undef) },
-  '>='  => sub { check_num_args('>=', @_) && ($_[0] >= $_[1] || undef) },
-  '<='  => sub { check_num_args('<=', @_) && ($_[0] <= $_[1] || undef) },
-  '>'   => sub { check_num_args('>',  @_) && ($_[0] >  $_[1] || undef) },
-  '<'   => sub { check_num_args('<',  @_) && ($_[0] <  $_[1] || undef) },
-  '+'   => sub { check_num_args('+',  @_) && $_[0] +  $_[1] },
-  '-'   => sub { check_num_args('-',  @_) && $_[0] -  $_[1] },
-  '/'   => sub { check_num_args('/',  @_) && $_[0] /  $_[1] },
-  '*'   => sub { check_num_args('*',  @_) && $_[0] *  $_[1] },
-  '^'   => sub { check_num_args('^',  @_) && $_[0] ** $_[1] },
-  '%'   => sub { check_num_args('%',  @_) && $_[0] %  $_[1] }};
+  '=='  => sub { check_args('==',['#x','#y'],@_) && ($_[0] == $_[1] || undef)},
+  '>='  => sub { check_args('>=',['#x','#y'],@_) && ($_[0] >= $_[1] || undef)},
+  '<='  => sub { check_args('<=',['#x','#y'],@_) && ($_[0] <= $_[1] || undef)},
+  '>'   => sub { check_args('>', ['#x','#y'],@_) && ($_[0] >  $_[1] || undef)},
+  '<'   => sub { check_args('<', ['#x','#y'],@_) && ($_[0] <  $_[1] || undef)},
+  '+'   => sub { check_args('+', ['#x','#y'],@_) && $_[0] +  $_[1] },
+  '-'   => sub { check_args('-', ['#x','#y'],@_) && $_[0] -  $_[1] },
+  '/'   => sub { check_args('/', ['#x','#y'],@_) && $_[0] /  $_[1] },
+  '*'   => sub { check_args('*', ['#x','#y'],@_) && $_[0] *  $_[1] },
+  '^'   => sub { check_args('^', ['#x','#y'],@_) && $_[0] ** $_[1] },
+  '%'   => sub { check_args('%', ['#x','#y'],@_) && $_[0] %  $_[1] }};
 
 sub tokenize {
   my @chars = split //, shift;
@@ -132,24 +132,27 @@ sub check_args {
   for my $p (@$params) {
     die "Missing arg for the $name function param '$p'\n" unless @args;
     my $v = shift @args;
-    if (substr($p, 0, 1) eq '@') {
+    my ($lead, $np) = (substr($p, 0, 1), substr($p, 1));
+    if ($lead eq '@') {
       die sprintf "Fun $name param '$p' didn't get a list type: '%s'\n",
         stringify($v) if !list($v);
-    } else {
+    } elsif ($lead eq '&') {
+      die sprintf "Fun $name param '$p' didn't get an function type: '%s'\n",
+        stringify($v) if !fun($v);
+    } elsif ($lead eq '#') {
+      die sprintf "Fun $name param '$p' didn't get a number type: '%s'\n",
+        stringify($v) if !num($v);
+    } elsif ($lead eq '*') {
       die sprintf "Fun $name param '$p' didn't get an atom type: '%s'\n",
         stringify($v) if !atom($v);
+    } else {
+      $np = $p;
     }
-    $scope{$p} = $v;
+    $scope{$np} = $v;
   }
   die sprintf "Excess args (%s) passed to $name function\n",
     join ',', map { stringify($_) } @args if @args;
   \%scope}
-
-sub check_num_args {
-  check_args($_[0], ['x','y'], @_[1..$#_]);
-  die sprintf "'%s' operates on nums but got (%s)\n", $_[0],
-    join ',', map { stringify($_) } @_[1..$#_]
-    unless @_ - 1 == grep { looks_like_number($_) } @_[1..$#_] }
 
 sub stringify {
   join ',', map {
@@ -188,22 +191,22 @@ __DATA__
 (set id    (fun (x) x)
      &&    (fun (x y) (if x y nil))
      ||    (fun (x y) (if x x y))
-     map   (fun (f @l)
-                (set h (car @l) t (cdr @l))
+     map   (fun (&f @l)
+                (set h (car l) t (cdr l))
                 (cons (f h) (if t (map f t) '())))
-     grep  (fun (f @l)
-                 (set h (car @l) t (cdr @l))
+     grep  (fun (&f @l)
+                 (set h (car l) t (cdr l))
                  (++ (if (f h) (cons h '()) nil)
                      (if t (grep f t) nil)))
      sort  (fun (@nums)
-                (set h (car @nums)
-                     t (cdr @nums)
-                     lt (if t (grep (fun (n) (<  n h)) t) nil)
-                     ge (if t (grep (fun (n) (>= n h)) t) nil))
-                (if @nums (++ (sort lt) (cons h (sort ge))) nil))
-     foldl (fun (f i @l)
-                (set h (car @l) t (cdr @l))
-                (if @l (foldl f (f i h) t) i))
-     and   (fun (@l) (foldl && 1 @l))
-     or    (fun (@l) (foldl || nil @l)))
+                (set h (car nums)
+                     t (cdr nums)
+                     lt (if t (grep (fun (#n) (<  n h)) t) nil)
+                     ge (if t (grep (fun (#n) (>= n h)) t) nil))
+                (if nums (++ (sort lt) (cons h (sort ge))) nil))
+     foldl (fun (&f i @l)
+                (set h (car l) t (cdr l))
+                (if l (foldl f (f i h) t) i))
+     and   (fun (@l) (foldl && 1 l))
+     or    (fun (@l) (foldl || nil l)))
 
