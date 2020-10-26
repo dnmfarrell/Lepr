@@ -16,6 +16,10 @@ Running Lepr
     ./lepr t/hello.lr
     Hello, World!
 
+Comments
+--------
+Single line comments begin with `;`.
+
 Types
 -----
   * functions
