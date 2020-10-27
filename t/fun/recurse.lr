@@ -3,5 +3,6 @@
 ; expect 1
 (set f (fun (n)
        (set m (- n 1))
-       (if (>= m 0) (or (print n) (f m)) nil))); recursion causes 'or' to be ignored!
+       (print n)
+       (if (> m 0) (f m) nil))); recursion causes 'or' to be ignored!
 (f 3)

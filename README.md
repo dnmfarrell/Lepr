@@ -1,10 +1,10 @@
 Lepr
 ====
-"Leper" is a tiny Lisp-like written in Perl. It supports lambdas, conditional execution and quoting.
+"Leper" is a tiny Lisp-like written in Perl. It supports lambdas, conditional execution and quoting. It's lazy as hell; all work is deferred to thunks until demanded.
 
 Function parameters can use sigils to denote the type they hold, which is type-checked at run time. Lepr uses functional scoping rules.
 
-Lepr is mostly "pure"; `set` and `print` are the only forms which don't return a value. Looping is done via recursion, symbols once defined cannot be re-defined.
+Lepr is mostly "pure"; `set` and `print` are the only forms which don't return a value. Looping is done via recursion, symbols once set cannot be re-defined. Here I was influenced by the book [Introduction To Functional Programming](https://www.semanticscholar.org/paper/Introduction-to-functional-programming-Bird-Wadler/0e19b6c7fb5ac38f9c5cd5316f07d3b5c2d84a62) (Bird & Wadler 1st ed.). It's difficult to match the elegance of ML without pattern matching but thanks to Lisp's syntax, Lepr is quite terse.
 
 Peter Norvig's article on [Lispy](https://norvig.com/lispy.html) inspired me, I hope it inspires you too.
 
@@ -40,10 +40,23 @@ Currently only supports the quote operator `'` which is expanded into the `quote
 
 Keywords
 --------
-    (fun (params) form+)
-    (if cond then [else])
-    (set {key value}+))
-    (quote form+))
+    (fun (params) form...)
+    (if cond then else)
+    (set key value ...)
+    (quote form...)
+
+Sigils
+------
+Function parameters may be prefaced with a sigil to denote its type:
+
+    @ list
+    * atom
+    & function
+    # num
+
+The absence of a sigil means any type is permitted. Within the function body the sigil is not used when referring to the bound argument. E.g. here is a function which accepts a number and returns it:
+
+    (fun (#x) x)
 
 Built-in Functions
 ------------------
@@ -70,19 +83,6 @@ Binary numerical functions:
     *    (#x #y)
     ^    (#x #y)
     %    (#x #y)
-
-Sigils
-------
-Function parameters may be prefaced with a sigil to denote its type:
-
-    @ list
-    * atom
-    & function
-    # num
-
-The absence of a sigil means any type is permitted. Within the function body the sigil is not used when referring to the bound argument. E.g. here is a function which only accepts a number and returns it:
-
-    (fun (#x) x)
 
 Examples
 --------
