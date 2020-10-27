@@ -6,9 +6,9 @@
 (print "foo")
 ; expect nil
 (print nil)
-; expect (1,2)
+; expect (1 2)
 (print '(1 2))
-; expect (nil,nil)
+; expect (nil nil)
 (print '(nil nil))
 ; expect 
 (print))

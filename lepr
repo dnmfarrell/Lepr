@@ -57,9 +57,9 @@ sub parse {
 sub expand {
   return unless @{$_[0]};
   my $n = shift @{$_[0]};
-  if    (aref($n))            { [ expand($n) ], expand(@_) }
-  elsif ($n && $n eq "'")     { ['quote', shift @{$_[0]}], expand(@_) }
-  else                        { $n, expand(@_) }}
+  if    (aref($n))        { [ expand($n) ], expand(@_) }
+  elsif ($n && $n eq "'") { ['quote', shift @{$_[0]}], expand(@_) }
+  else                    { $n, expand(@_) }}
 
 sub thnk { ref $_[0] eq 'Thunk' }
 sub aref { ref $_[0] eq 'ARRAY' }
@@ -160,14 +160,14 @@ sub check_args {
 sub force { my ($r) = $_[0]->(); thnk($r) ? force($r) : $r }
 
 sub stringify {
-  join ',', map {
+  join ' ', map {
     if    (nil($_))  { 'nil' }
     elsif (str($_))  { "\"$$_\"" }
     elsif (num($_))  { $_ }
     elsif (fun($_))  { 'fun' }
-    elsif (list($_)) { sprintf '(%s)', join ',', map { stringify($_) } @$_ }
+    elsif (list($_)) { sprintf '(%s)', join ' ', map { stringify($_) } @$_ }
     elsif (thnk($_)) { stringify(force($_)) }
-    else             { die "Can't stringify $_" } } @_ }
+    else             { $_ } } @_ } # symbol
 
 sub exist {
   my ($k, $env) = @_;
