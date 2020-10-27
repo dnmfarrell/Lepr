@@ -141,10 +141,10 @@ sub param_to_arg { $_[0] =~ /^([@&#*\$])(.+)/ ? ($2,$1) : $_[0] }
 
 sub check_args {
   my ($name, $params, @args, %scope) = @_;
+  no strict 'refs'; no warnings 'qw';
   for my $p (@$params) {
     die "Missing arg for the $name function param '$p'\n" unless @args;
     my $thunk = shift @args;
-    no strict 'refs'; no warnings 'qw';
     my %typechecks = qw(@ list & fun # num $ str * atom);
     my ($arg, $sigil) = param_to_arg($p);
     $scope{$arg} = $sigil ? Thunk
