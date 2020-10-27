@@ -53,6 +53,7 @@ Function parameters may be prefaced with a sigil to denote its type:
     * atom
     & function
     # num
+    $ str
 
 The absence of a sigil means any type is permitted. Within the function body the sigil is not used when referring to the bound argument. E.g. here is a function which accepts a number and returns it:
 
